@@ -1,75 +1,75 @@
 import sys
 import os
-
-# This set of lines are needed to import the gRPC stubs.
-# The path of the stubs is relative to the current file, or absolute inside the container.
-# Change these lines only if strictly needed.
-FILE = __file__ if '__file__' in globals() else os.getenv("PYTHONFILE", "")
-fraud_detection_grpc_path = os.path.abspath(os.path.join(FILE, '../../../utils/pb/fraud_detection'))
-sys.path.insert(0, fraud_detection_grpc_path)
-import fraud_detection_pb2 as fraud_detection
-import fraud_detection_pb2_grpc as fraud_detection_grpc
-
 import grpc
+import json
+import threading
 
-def greet(name='you'):
-    # Establish a connection with the fraud-detection gRPC service.
-    with grpc.insecure_channel('fraud_detection:50051') as channel:
-        # Create a stub object.
-        stub = fraud_detection_grpc.HelloServiceStub(channel)
-        # Call the service through the stub object.
-        response = stub.SayHello(fraud_detection.HelloRequest(name=name))
-    return response.greeting
-
-# Import Flask.
-# Flask is a web framework for Python.
-# It allows you to build a web application quickly.
-# For more information, see https://flask.palletsprojects.com/en/latest/
 from flask import Flask, request
 from flask_cors import CORS
-import json
 
-# Create a simple Flask app.
+# Ensure utils/pb is in the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+
+import fraud_detection_pb2 as fraud_detection
+import fraud_detection_pb2_grpc as fraud_detection_grpc
+import transaction_verification_pb2 as transaction_verification
+import transaction_verification_pb2_grpc as transaction_verification_grpc
+import suggestions_pb2 as suggestions
+import suggestions_pb2_grpc as suggestions_grpc
+
 app = Flask(__name__)
-# Enable CORS for the app.
 CORS(app, resources={r'/*': {'origins': '*'}})
 
-# Define a GET endpoint.
-@app.route('/', methods=['GET'])
-def index():
-    """
-    Responds with 'Hello, [name]' when a GET request is made to '/' endpoint.
-    """
-    # Test the fraud-detection gRPC service.
-    response = greet(name='orchestrator')
-    # Return the response.
-    return response
+def check_fraud(order_id, amount, result):
+    with grpc.insecure_channel('fraud_detection:50051') as channel:
+        stub = fraud_detection_grpc.FraudDetectionStub(channel)
+        response = stub.CheckFraud(fraud_detection.FraudCheckRequest(order_id=order_id, amount=amount))
+        result['fraud'] = response.is_fraudulent
+
+def verify_transaction(order_id, user_id, items, credit_card, result):
+    with grpc.insecure_channel('transaction_verification:50052') as channel:
+        stub = transaction_verification_grpc.TransactionVerificationStub(channel)
+        response = stub.VerifyTransaction(transaction_verification.TransactionVerificationRequest(
+            transaction_id=order_id, user_id=user_id, items=items, credit_card=credit_card))
+        result['valid_transaction'] = response.is_valid
+
+def get_suggestions(user_id, num_suggestions, result):
+    with grpc.insecure_channel('suggestions:50053') as channel:
+        stub = suggestions_grpc.SuggestionsStub(channel)
+        response = stub.GetBookSuggestions(suggestions.SuggestionsRequest(user_id=user_id, num_suggestions=num_suggestions))
+        result['suggested_books'] = [{'title': book} for book in response.books]
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
-    """
-    Responds with a JSON object containing the order ID, status, and suggested books.
-    """
-    # Get request object data to json
     request_data = json.loads(request.data)
-    # Print request object data
-    print("Request Data:", request_data.get('items'))
-
-    # Dummy response following the provided YAML specification for the bookstore
-    order_status_response = {
-        'orderId': '12345',
-        'status': 'Order Approved',
-        'suggestedBooks': [
-            {'bookId': '123', 'title': 'The Best Book', 'author': 'Author 1'},
-            {'bookId': '456', 'title': 'The Second Best Book', 'author': 'Author 2'}
-        ]
+    order_id = request_data.get('orderId', 'unknown')
+    amount = request_data.get('amount', 0)
+    user_id = request_data.get('userId', 'unknown')
+    items = request_data.get('items', [])
+    credit_card = request_data.get('creditCard', '')
+    
+    result = {}
+    threads = []
+    
+    threads.append(threading.Thread(target=check_fraud, args=(order_id, amount, result)))
+    threads.append(threading.Thread(target=verify_transaction, args=(order_id, user_id, items, credit_card, result)))
+    threads.append(threading.Thread(target=get_suggestions, args=(user_id, 3, result)))
+    
+    for thread in threads:
+        thread.start()
+    
+    for thread in threads:
+        thread.join()
+    
+    status = "Order Approved" if result.get('valid_transaction', False) and not result.get('fraud', True) else "Order Rejected"
+    
+    response = {
+        'orderId': order_id,
+        'status': status,
+        'suggestedBooks': result.get('suggested_books', [])
     }
-
-    return order_status_response
-
+    
+    return response
 
 if __name__ == '__main__':
-    # Run the app in debug mode to enable hot reloading.
-    # This is useful for development.
-    # The default port is 5000.
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=5000)

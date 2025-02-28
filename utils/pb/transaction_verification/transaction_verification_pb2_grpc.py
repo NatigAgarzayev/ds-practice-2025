@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from fraud_detection import fraud_detection_pb2 as fraud__detection_dot_fraud__detection__pb2
+from transaction_verification import transaction_verification_pb2 as transaction__verification_dot_transaction__verification__pb2
 
 GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in fraud_detection/fraud_detection_pb2_grpc.py depends on'
+        + f' but the generated code in transaction_verification/transaction_verification_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class FraudDetectionStub(object):
+class TransactionVerificationStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -34,43 +34,43 @@ class FraudDetectionStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.CheckFraud = channel.unary_unary(
-                '/fraud_detection.FraudDetection/CheckFraud',
-                request_serializer=fraud__detection_dot_fraud__detection__pb2.FraudCheckRequest.SerializeToString,
-                response_deserializer=fraud__detection_dot_fraud__detection__pb2.FraudCheckResponse.FromString,
+        self.VerifyTransaction = channel.unary_unary(
+                '/transaction_verification.TransactionVerification/VerifyTransaction',
+                request_serializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationRequest.SerializeToString,
+                response_deserializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.FromString,
                 _registered_method=True)
 
 
-class FraudDetectionServicer(object):
+class TransactionVerificationServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def CheckFraud(self, request, context):
+    def VerifyTransaction(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_FraudDetectionServicer_to_server(servicer, server):
+def add_TransactionVerificationServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'CheckFraud': grpc.unary_unary_rpc_method_handler(
-                    servicer.CheckFraud,
-                    request_deserializer=fraud__detection_dot_fraud__detection__pb2.FraudCheckRequest.FromString,
-                    response_serializer=fraud__detection_dot_fraud__detection__pb2.FraudCheckResponse.SerializeToString,
+            'VerifyTransaction': grpc.unary_unary_rpc_method_handler(
+                    servicer.VerifyTransaction,
+                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationRequest.FromString,
+                    response_serializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'fraud_detection.FraudDetection', rpc_method_handlers)
+            'transaction_verification.TransactionVerification', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('fraud_detection.FraudDetection', rpc_method_handlers)
+    server.add_registered_method_handlers('transaction_verification.TransactionVerification', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class FraudDetection(object):
+class TransactionVerification(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def CheckFraud(request,
+    def VerifyTransaction(request,
             target,
             options=(),
             channel_credentials=None,
@@ -83,9 +83,9 @@ class FraudDetection(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/fraud_detection.FraudDetection/CheckFraud',
-            fraud__detection_dot_fraud__detection__pb2.FraudCheckRequest.SerializeToString,
-            fraud__detection_dot_fraud__detection__pb2.FraudCheckResponse.FromString,
+            '/transaction_verification.TransactionVerification/VerifyTransaction',
+            transaction__verification_dot_transaction__verification__pb2.TransactionVerificationRequest.SerializeToString,
+            transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.FromString,
             options,
             channel_credentials,
             insecure,
