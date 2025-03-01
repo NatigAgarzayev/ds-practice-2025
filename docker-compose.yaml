@@ -9,7 +9,7 @@ services:
     ports:
       # Expose port 8080 on the host, and map port 80 of the container to port 8080 on the host
       # Access the application at http://localhost:8080
-      - "8080:80"
+      - "8082:80"
     volumes:
       # Mount the frontend directory
       - ./frontend/src:/usr/share/nginx/html

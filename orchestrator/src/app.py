@@ -10,12 +10,20 @@ from flask_cors import CORS
 # Ensure utils/pb is in the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
 
-import fraud_detection_pb2 as fraud_detection
-import fraud_detection_pb2_grpc as fraud_detection_grpc
-import transaction_verification_pb2 as transaction_verification
-import transaction_verification_pb2_grpc as transaction_verification_grpc
-import suggestions_pb2 as suggestions
-import suggestions_pb2_grpc as suggestions_grpc
+# import fraud_detection_pb2 as fraud_detection
+# import fraud_detection_pb2_grpc as fraud_detection_grpc
+from fraud_detection import fraud_detection_pb2 as fraud_detection
+from fraud_detection import fraud_detection_pb2_grpc as fraud_detection_grpc
+
+# import transaction_verification_pb2 as transaction_verification
+# import transaction_verification_pb2_grpc as transaction_verification_grpc
+from transaction_verification import transaction_verification_pb2 as transaction_verification
+from transaction_verification import transaction_verification_pb2_grpc as transaction_verification_grpc
+
+# import suggestions_pb2 as suggestions
+# import suggestions_pb2_grpc as suggestions_grpc
+from suggestions import suggestions_pb2 as suggestions
+from suggestions import suggestions_pb2_grpc as suggestions_grpc
 
 app = Flask(__name__)
 CORS(app, resources={r'/*': {'origins': '*'}})
