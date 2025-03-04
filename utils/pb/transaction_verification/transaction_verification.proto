@@ -6,10 +6,15 @@ service TransactionVerification {
     rpc VerifyTransaction (TransactionVerificationRequest) returns (TransactionVerificationResponse);
 }
 
+message Item {
+    string book_id = 1;
+    int32 quantity = 2;
+}
+
 message TransactionVerificationRequest {
     string transaction_id = 1;
     string user_id = 2;
-    repeated string items = 3;
+    repeated Item items = 3;  // Correctly referencing `Item`
     string credit_card = 4;
 }
 
