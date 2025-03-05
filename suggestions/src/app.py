@@ -31,7 +31,8 @@ BOOKS = [
     "Brave New World by Aldous Huxley",
     "Ulysses by James Joyce",
     "The Hobbit by J.R.R. Tolkien",
-    "DEAD MAXIM by Natig"
+    "2077 by Natig",
+    "DED MAXIM by Natig",
 ]
 
 # Create a class to define the server functions
