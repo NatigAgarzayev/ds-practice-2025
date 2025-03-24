@@ -3,146 +3,102 @@ import os
 import grpc
 import json
 import threading
-import uuid  
+import uuid
+import time
 from flask import Flask, request
 from flask_cors import CORS
 
-
-# Ensure utils/pb is in the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
-# import fraud_detection_pb2 as fraud_detection
-# import fraud_detection_pb2_grpc as fraud_detection_grpc
 from fraud_detection import fraud_detection_pb2 as fraud_detection
-from fraud_detection import fraud_detection_pb2_grpc as fraud_detection_grpc
-
-# import transaction_verification_pb2 as transaction_verification
-# import transaction_verification_pb2_grpc as transaction_verification_grpc
-from transaction_verification.transaction_verification_pb2 import TransactionVerificationRequest, Item
-from transaction_verification import transaction_verification_pb2_grpc as transaction_verification_grpc
-
-
-# import suggestions_pb2 as suggestions
-# import suggestions_pb2_grpc as suggestions_grpc
+from fraud_detection import fraud_detection_pb2_grpc as fraud_detection_grpc    
+from transaction_verification import transaction_verification_pb2 as txn
+from transaction_verification import transaction_verification_pb2_grpc as txn_grpc
 from suggestions import suggestions_pb2 as suggestions
 from suggestions import suggestions_pb2_grpc as suggestions_grpc
+from vector_clock import VectorClock
+
 import logging
-
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - [%(levelname)s] - %(message)s",
-    level=logging.INFO  # Change to DEBUG for more details
-)
-
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 app = Flask(__name__)
 CORS(app, resources={r'/*': {'origins': '*'}})
 
-def check_fraud(order_id, amount, result):
-    logger.info(f"Checking fraud for Order ID: {order_id} with Amount: {amount}")
-    
-    with grpc.insecure_channel('fraud_detection:50051') as channel:
-        stub = fraud_detection_grpc.FraudDetectionStub(channel)
-        response = stub.CheckFraud(fraud_detection.FraudCheckRequest(order_id=order_id, amount=amount))
+SERVICES = ["orchestrator", "transaction_verification", "fraud_detection"]
 
-    result['fraud'] = response.is_fraudulent
-    logger.info(f"Fraud check result for Order ID: {order_id}: {'Fraud Detected' if response.is_fraudulent else 'Legitimate Transaction'}")
+# In-memory cache to store order vector clocks
+order_clocks = {}
 
+def init_services(order_id, request_data):
+    clock = VectorClock(SERVICES)
+    clock.increment("orchestrator")
+    order_clocks[order_id] = clock
 
-def verify_transaction(request_data, result, order_id):
-    """Converts JSON payload to Protobuf and calls the gRPC service."""
-    user_id = request_data.get("user", {}).get("name") or request_data.get("userId") or "unknown"
-    credit_card = request_data.get("creditCard", {}).get("number", "")
-    
-    logger.info(f"Verifying transaction for Order ID: {order_id}, User ID: {user_id}")
+    logger.info(f"[{order_id}] Initializing all backend services")
 
-    protobuf_items = [
-        Item(book_id=item["name"], quantity=item["quantity"])
-        for item in request_data.get("items", [])
-        if isinstance(item, dict) and "name" in item and "quantity" in item
-    ]
+    def cache_txn_verification():
+        with grpc.insecure_channel("transaction_verification:50052") as channel:
+            stub = txn_grpc.TransactionVerificationStub(channel)
+            request = txn.CachedOrderRequest(order_id=order_id, payload=json.dumps(request_data), clock=json.dumps(clock.to_dict()))
+            stub.CacheOrder(request)
 
-    request = TransactionVerificationRequest(
-        transaction_id=order_id,
-        user_id=user_id,
-        items=protobuf_items,
-        credit_card=credit_card
-    )
+    def cache_fraud_detection():
+        with grpc.insecure_channel("fraud_detection:50051") as channel:
+            stub = fraud_detection_grpc.FraudDetectionStub(channel)
+            request = fraud_detection.CachedOrderRequest(order_id=order_id, payload=json.dumps(request_data), clock=json.dumps(clock.to_dict()))
+            stub.CacheOrder(request)
 
-    logger.debug(f"Transaction Request: {request}")
-
-    with grpc.insecure_channel('transaction_verification:50052') as channel:
-        stub = transaction_verification_grpc.TransactionVerificationStub(channel)
-        response = stub.VerifyTransaction(request)
-
-    result['valid_transaction'] = response.is_valid
-    logger.info(f"Transaction verification result for Order ID: {order_id}: {'Valid' if response.is_valid else 'Invalid'} - {response.message}")
-
-
-
-def get_suggestions(user_id, num_suggestions):
-    """Calls the book suggestions gRPC service and returns the response."""
-    logger.info(f"Fetching {num_suggestions} book suggestions for User ID: {user_id}")
-
-    with grpc.insecure_channel('suggestions:50053') as channel:
-        stub = suggestions_grpc.SuggestionsStub(channel)
-        request = suggestions.SuggestionsRequest(user_id=user_id, num_suggestions=num_suggestions)
-        response = stub.GetBookSuggestions(request)
-
-    suggested_books = [{"title": book} for book in response.books]
-    
-    logger.info(f"Suggested Books for User ID {user_id}: {suggested_books}")
-    return suggested_books
-
+    t1 = threading.Thread(target=cache_txn_verification)
+    t2 = threading.Thread(target=cache_fraud_detection)
+    t1.start(); t2.start(); t1.join(); t2.join()
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
-    """Handles the checkout process by calling all gRPC services."""
-    request_data = json.loads(request.data)
-    order_id = request_data.get("orderId") or request_data.get("order_id") or str(uuid.uuid4())
-    user_id = request_data.get("userId") or request_data.get("user_id") or "unknown"
-    amount = request_data.get("amount", 0)
+    data = request.get_json()
+    order_id = str(uuid.uuid4())
+    user_id = data.get("user", {}).get("name", "guest")
+    logger.info(f"[{order_id}] Checkout request from user: {user_id}")
 
-    logger.info(f"Received checkout request for Order ID: {order_id}, User ID: {user_id}, Amount: {amount}")
+    init_services(order_id, data)
 
-    result = {}
-    threads = []
+    # Trigger verification first
+    logger.info(f"[{order_id}] Triggering Transaction Verification")
+    with grpc.insecure_channel("transaction_verification:50052") as channel:
+        stub = txn_grpc.TransactionVerificationStub(channel)
+        verify_resp = stub.ProcessOrder(txn.OrderProcessRequest(order_id=order_id))
 
-    # Start fraud check and transaction verification
-    threads.append(threading.Thread(target=check_fraud, args=(order_id, amount, result)))
-    threads.append(threading.Thread(target=verify_transaction, args=(request_data, result, order_id)))
+    if not verify_resp.is_valid:
+        return {
+            "orderId": order_id,
+            "status": "Order Rejected",
+            "suggestedBooks": []
+        }
 
-    for thread in threads:
-        thread.start()
+    # Trigger fraud detection only if valid
+    logger.info(f"[{order_id}] Triggering Fraud Detection")
+    with grpc.insecure_channel("fraud_detection:50051") as channel:
+        stub = fraud_detection_grpc.FraudDetectionStub(channel)
+        fraud_resp = stub.ProcessOrder(fraud_detection.OrderProcessRequest(order_id=order_id))
 
-    for thread in threads:
-        thread.join()
+    if fraud_resp.is_fraudulent:
+        return {
+            "orderId": order_id,
+            "status": "Order Rejected (Fraud)",
+            "suggestedBooks": []
+        }
 
-    logger.debug(f"DEBUG RESULT BEFORE SUGGESTIONS: {result}")
+    # Get book suggestions
+    with grpc.insecure_channel("suggestions:50053") as channel:
+        stub = suggestions_grpc.SuggestionsStub(channel)
+        sugg_resp = stub.GetBookSuggestions(suggestions.SuggestionsRequest(user_id=user_id, num_suggestions=5))
 
-    # Determine order status
-    if result.get('valid_transaction', False):
-        if result.get('fraud', False):
-            status = "Order Approved"
-
-            # ✅ Fetch book suggestions **only if the order is approved**
-            suggested_books = get_suggestions(user_id, 10)
-            result['suggested_books'] = suggested_books
-        else:
-            status = "Order Pending Review (Fraud Detected)"
-    else:
-        status = "Order Rejected"
-
-    response = {
-        'orderId': order_id,
-        'status': status,
-        'suggestedBooks': result.get('suggested_books', [])
+    return {
+        "orderId": order_id,
+        "status": "Order Approved",
+        "suggestedBooks": [{"title": b} for b in sugg_resp.books]
     }
 
-    logger.info(f"Checkout completed for Order ID: {order_id}, Status: {status}")
-    return response
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run(host="0.0.0.0", port=5000)

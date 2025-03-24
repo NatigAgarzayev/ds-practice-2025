@@ -3,22 +3,25 @@ syntax = "proto3";
 package transaction_verification;
 
 service TransactionVerification {
-    rpc VerifyTransaction (TransactionVerificationRequest) returns (TransactionVerificationResponse);
+  rpc CacheOrder(CachedOrderRequest) returns (CacheAck);
+  rpc ProcessOrder(OrderProcessRequest) returns (TransactionVerificationResponse);
 }
 
-message Item {
-    string book_id = 1;
-    int32 quantity = 2;
+message CachedOrderRequest {
+  string order_id = 1;
+  string payload = 2;       // JSON payload
+  string clock = 3;         // Serialized vector clock (JSON)
 }
 
-message TransactionVerificationRequest {
-    string transaction_id = 1;
-    string user_id = 2;
-    repeated Item items = 3;  // Correctly referencing `Item`
-    string credit_card = 4;
+message OrderProcessRequest {
+  string order_id = 1;
 }
 
 message TransactionVerificationResponse {
-    bool is_valid = 1;
-    string message = 2;
+  bool is_valid = 1;
+  string message = 2;
+}
+
+message CacheAck {
+  string message = 1;
 }

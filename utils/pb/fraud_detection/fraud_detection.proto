@@ -3,15 +3,25 @@ syntax = "proto3";
 package fraud_detection;
 
 service FraudDetection {
-    rpc CheckFraud (FraudCheckRequest) returns (FraudCheckResponse);
+  rpc CacheOrder(CachedOrderRequest) returns (CacheAck);
+  rpc ProcessOrder(OrderProcessRequest) returns (FraudCheckResponse);
 }
 
-message FraudCheckRequest {
-    string order_id = 1;
-    double amount = 2;
+message CachedOrderRequest {
+  string order_id = 1;
+  string payload = 2;       // JSON payload
+  string clock = 3;         // Serialized vector clock (JSON)
+}
+
+message OrderProcessRequest {
+  string order_id = 1;
 }
 
 message FraudCheckResponse {
-    bool is_fraudulent = 1;
-    string message = 2;
+  bool is_fraudulent = 1;
+  string message = 2;
+}
+
+message CacheAck {
+  string message = 1;
 }

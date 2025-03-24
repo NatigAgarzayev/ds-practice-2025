@@ -24,17 +24,21 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%fraud_detection/fraud_detection.proto\x12\x0f\x66raud_detection\"5\n\x11\x46raudCheckRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x0e\n\x06\x61mount\x18\x02 \x01(\x01\"<\n\x12\x46raudCheckResponse\x12\x15\n\ris_fraudulent\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t2g\n\x0e\x46raudDetection\x12U\n\nCheckFraud\x12\".fraud_detection.FraudCheckRequest\x1a#.fraud_detection.FraudCheckResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%fraud_detection/fraud_detection.proto\x12\x0f\x66raud_detection\"F\n\x12\x43\x61\x63hedOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x0f\n\x07payload\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"\'\n\x13OrderProcessRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\"<\n\x12\x46raudCheckResponse\x12\x15\n\ris_fraudulent\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1b\n\x08\x43\x61\x63heAck\x12\x0f\n\x07message\x18\x01 \x01(\t2\xb9\x01\n\x0e\x46raudDetection\x12L\n\nCacheOrder\x12#.fraud_detection.CachedOrderRequest\x1a\x19.fraud_detection.CacheAck\x12Y\n\x0cProcessOrder\x12$.fraud_detection.OrderProcessRequest\x1a#.fraud_detection.FraudCheckResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'fraud_detection.fraud_detection_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_FRAUDCHECKREQUEST']._serialized_start=58
-  _globals['_FRAUDCHECKREQUEST']._serialized_end=111
-  _globals['_FRAUDCHECKRESPONSE']._serialized_start=113
-  _globals['_FRAUDCHECKRESPONSE']._serialized_end=173
-  _globals['_FRAUDDETECTION']._serialized_start=175
-  _globals['_FRAUDDETECTION']._serialized_end=278
+  _globals['_CACHEDORDERREQUEST']._serialized_start=58
+  _globals['_CACHEDORDERREQUEST']._serialized_end=128
+  _globals['_ORDERPROCESSREQUEST']._serialized_start=130
+  _globals['_ORDERPROCESSREQUEST']._serialized_end=169
+  _globals['_FRAUDCHECKRESPONSE']._serialized_start=171
+  _globals['_FRAUDCHECKRESPONSE']._serialized_end=231
+  _globals['_CACHEACK']._serialized_start=233
+  _globals['_CACHEACK']._serialized_end=260
+  _globals['_FRAUDDETECTION']._serialized_start=263
+  _globals['_FRAUDDETECTION']._serialized_end=448
 # @@protoc_insertion_point(module_scope)

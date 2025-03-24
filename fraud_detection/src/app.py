@@ -1,53 +1,57 @@
+import json
+import random
+from concurrent import futures
+import grpc
+import logging
 import sys
 import os
-import random
 
-# This set of lines are needed to import the gRPC stubs.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
-from fraud_detection import fraud_detection_pb2 as fraud_detection
-from fraud_detection import fraud_detection_pb2_grpc as fraud_detection_grpc
+from fraud_detection import fraud_detection_pb2 as fraud
+from fraud_detection import fraud_detection_pb2_grpc as fraud_grpc
+from vector_clock import VectorClock
 
-import grpc
-from concurrent import futures
-import logging
-
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - [%(levelname)s] - %(message)s",
-    level=logging.INFO  # Change to DEBUG for more details
-)
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create a class to define the server functions
-class FraudDetectionService(fraud_detection_grpc.FraudDetectionServicer):
-    def CheckFraud(self, request, context):
-        """Dummy fraud detection logic: flagging orders above a certain amount as fraud."""
-        logger.info(f"Received fraud check request for Order ID: {request.order_id} with Amount: {request.amount}")
+orders = {}
 
-        is_fraudulent = request.amount > 1000 or random.choice([True, False])
-        
-        response = fraud_detection.FraudCheckResponse()
-        response.is_fraudulent = is_fraudulent
-        response.message = "Fraud detected" if is_fraudulent else "Transaction is legitimate"
-        
-        logger.info(f"Fraud check result for Order ID {request.order_id}: {response.message}")
-        return response
+class FraudDetectionService(fraud_grpc.FraudDetectionServicer):
+    def CacheOrder(self, request, context):
+        order_id = request.order_id
+        orders[order_id] = {
+            "data": json.loads(request.payload),
+            "clock": VectorClock(["orchestrator", "transaction_verification", "fraud_detection"])
+        }
+        orders[order_id]["clock"].from_dict(json.loads(request.clock))
+        logger.info(f"[{order_id}] Cached order and initialized vector clock")
+        return fraud.CacheAck()
 
+    def ProcessOrder(self, request, context):
+        order_id = request.order_id
+        cached = orders.get(order_id)
+        data = cached["data"]
+        clock = cached["clock"]
+
+        # simulate fraud detection logic
+        amount = data.get("amount")
+        if amount is None:
+            amount = sum(item.get("quantity", 1) * 20 for item in data.get("items", []))
+        is_fraudulent = amount > 1000 or random.choice([False, True])
+
+        clock.increment("fraud_detection")
+        logger.info(f"[{order_id}] Fraud check complete: {'Fraud' if is_fraudulent else 'Legit'}")
+        return fraud.FraudCheckResponse(is_fraudulent=is_fraudulent, message="done")
 
 def serve():
-    logger.info("Starting Fraud Detection gRPC service...")
-
     server = grpc.server(futures.ThreadPoolExecutor())
-    fraud_detection_grpc.add_FraudDetectionServicer_to_server(FraudDetectionService(), server)
-    
-    port = "50051"
-    server.add_insecure_port("[::]:" + port)
+    fraud_grpc.add_FraudDetectionServicer_to_server(FraudDetectionService(), server)
+    server.add_insecure_port("[::]:50051")
     server.start()
-    logger.info(f"Fraud detection service started. Listening on port {port}.")
+    logger.info("Fraud detection service running on port 50051")
     server.wait_for_termination()
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     serve()

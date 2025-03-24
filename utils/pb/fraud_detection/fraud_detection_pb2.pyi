@@ -4,13 +4,21 @@ from typing import ClassVar as _ClassVar, Optional as _Optional
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
-class FraudCheckRequest(_message.Message):
-    __slots__ = ("order_id", "amount")
+class CachedOrderRequest(_message.Message):
+    __slots__ = ("order_id", "payload", "clock")
     ORDER_ID_FIELD_NUMBER: _ClassVar[int]
-    AMOUNT_FIELD_NUMBER: _ClassVar[int]
+    PAYLOAD_FIELD_NUMBER: _ClassVar[int]
+    CLOCK_FIELD_NUMBER: _ClassVar[int]
     order_id: str
-    amount: float
-    def __init__(self, order_id: _Optional[str] = ..., amount: _Optional[float] = ...) -> None: ...
+    payload: str
+    clock: str
+    def __init__(self, order_id: _Optional[str] = ..., payload: _Optional[str] = ..., clock: _Optional[str] = ...) -> None: ...
+
+class OrderProcessRequest(_message.Message):
+    __slots__ = ("order_id",)
+    ORDER_ID_FIELD_NUMBER: _ClassVar[int]
+    order_id: str
+    def __init__(self, order_id: _Optional[str] = ...) -> None: ...
 
 class FraudCheckResponse(_message.Message):
     __slots__ = ("is_fraudulent", "message")
@@ -19,3 +27,9 @@ class FraudCheckResponse(_message.Message):
     is_fraudulent: bool
     message: str
     def __init__(self, is_fraudulent: bool = ..., message: _Optional[str] = ...) -> None: ...
+
+class CacheAck(_message.Message):
+    __slots__ = ("message",)
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    message: str
+    def __init__(self, message: _Optional[str] = ...) -> None: ...

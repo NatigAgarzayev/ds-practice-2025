@@ -34,9 +34,14 @@ class TransactionVerificationStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.VerifyTransaction = channel.unary_unary(
-                '/transaction_verification.TransactionVerification/VerifyTransaction',
-                request_serializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationRequest.SerializeToString,
+        self.CacheOrder = channel.unary_unary(
+                '/transaction_verification.TransactionVerification/CacheOrder',
+                request_serializer=transaction__verification_dot_transaction__verification__pb2.CachedOrderRequest.SerializeToString,
+                response_deserializer=transaction__verification_dot_transaction__verification__pb2.CacheAck.FromString,
+                _registered_method=True)
+        self.ProcessOrder = channel.unary_unary(
+                '/transaction_verification.TransactionVerification/ProcessOrder',
+                request_serializer=transaction__verification_dot_transaction__verification__pb2.OrderProcessRequest.SerializeToString,
                 response_deserializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.FromString,
                 _registered_method=True)
 
@@ -44,7 +49,13 @@ class TransactionVerificationStub(object):
 class TransactionVerificationServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def VerifyTransaction(self, request, context):
+    def CacheOrder(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ProcessOrder(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -53,9 +64,14 @@ class TransactionVerificationServicer(object):
 
 def add_TransactionVerificationServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'VerifyTransaction': grpc.unary_unary_rpc_method_handler(
-                    servicer.VerifyTransaction,
-                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationRequest.FromString,
+            'CacheOrder': grpc.unary_unary_rpc_method_handler(
+                    servicer.CacheOrder,
+                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.CachedOrderRequest.FromString,
+                    response_serializer=transaction__verification_dot_transaction__verification__pb2.CacheAck.SerializeToString,
+            ),
+            'ProcessOrder': grpc.unary_unary_rpc_method_handler(
+                    servicer.ProcessOrder,
+                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderProcessRequest.FromString,
                     response_serializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.SerializeToString,
             ),
     }
@@ -70,7 +86,7 @@ class TransactionVerification(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def VerifyTransaction(request,
+    def CacheOrder(request,
             target,
             options=(),
             channel_credentials=None,
@@ -83,8 +99,35 @@ class TransactionVerification(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/transaction_verification.TransactionVerification/VerifyTransaction',
-            transaction__verification_dot_transaction__verification__pb2.TransactionVerificationRequest.SerializeToString,
+            '/transaction_verification.TransactionVerification/CacheOrder',
+            transaction__verification_dot_transaction__verification__pb2.CachedOrderRequest.SerializeToString,
+            transaction__verification_dot_transaction__verification__pb2.CacheAck.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ProcessOrder(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/transaction_verification.TransactionVerification/ProcessOrder',
+            transaction__verification_dot_transaction__verification__pb2.OrderProcessRequest.SerializeToString,
             transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.FromString,
             options,
             channel_credentials,

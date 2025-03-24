@@ -1,63 +1,57 @@
+import json
+from concurrent import futures
+import grpc
+import logging
 import sys
 import os
-import re
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
-from transaction_verification import transaction_verification_pb2 as transaction_verification
-from transaction_verification import transaction_verification_pb2_grpc as transaction_verification_grpc
+from transaction_verification import transaction_verification_pb2 as txn
+from transaction_verification import transaction_verification_pb2_grpc as txn_grpc
+from vector_clock import VectorClock
 
-import grpc
-from concurrent import futures
-import logging
-
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - [%(levelname)s] - %(message)s",
-    level=logging.INFO  # Change to DEBUG for more details
-)
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create a class to define the server functions
-class TransactionVerificationService(transaction_verification_grpc.TransactionVerificationServicer):
-    def VerifyTransaction(self, request, context):
-        """Verifies transaction details including items, user ID, and credit card format."""
-        logger.info(f"Received transaction verification request for Transaction ID: {request.transaction_id}")
+orders = {}  # Cache for order data
 
-        is_valid = True
-        message = "Transaction is valid"
-        
-        if not request.items:
-            is_valid = False
-            message = "Transaction must contain at least one item"
-        elif not request.user_id:
-            is_valid = False
-            message = "User ID is required"
-        elif not re.match(r'^[0-9]{16}$', request.credit_card):
-            is_valid = False
-            message = "Invalid credit card format"
-        
-        response = transaction_verification.TransactionVerificationResponse()
-        response.is_valid = is_valid
-        response.message = message
+class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
+    def CacheOrder(self, request, context):
+        order_id = request.order_id
+        orders[order_id] = {
+            "data": json.loads(request.payload),
+            "clock": VectorClock(["orchestrator", "transaction_verification", "fraud_detection"])
+        }
+        orders[order_id]["clock"].from_dict(json.loads(request.clock))
+        logger.info(f"[{order_id}] Cached order and initialized vector clock")
+        return txn.CacheAck()
 
-        logger.info(f"Transaction verification result for Transaction ID {request.transaction_id}: {message}")
-        return response
+    def ProcessOrder(self, request, context):
+        order_id = request.order_id
+        cached = orders.get(order_id)
+        clock = cached["clock"]
+        data = cached["data"]
 
+        user_id = data.get("user", {}).get("name", "")
+        items = data.get("items", [])
+        card = data.get("creditCard", {}).get("number", "")
+
+        is_valid = user_id and items and len(card) == 16
+        msg = "Valid" if is_valid else "Invalid"
+
+        clock.increment("transaction_verification")
+        logger.info(f"[{order_id}] Processed Transaction Verification - {msg}")
+        return txn.TransactionVerificationResponse(is_valid=is_valid, message=msg)
 
 def serve():
-    logger.info("Starting Transaction Verification gRPC service...")
-
     server = grpc.server(futures.ThreadPoolExecutor())
-    transaction_verification_grpc.add_TransactionVerificationServicer_to_server(TransactionVerificationService(), server)
-    
-    port = "50052"
-    server.add_insecure_port("[::]:" + port)
+    txn_grpc.add_TransactionVerificationServicer_to_server(TransactionVerificationService(), server)
+    server.add_insecure_port("[::]:50052")
     server.start()
-    logger.info(f"Transaction verification service started. Listening on port {port}.")
+    logger.info("Transaction verification service running on port 50052")
     server.wait_for_termination()
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     serve()
