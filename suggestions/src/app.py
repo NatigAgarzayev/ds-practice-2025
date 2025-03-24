@@ -1,25 +1,23 @@
-import sys
 import os
+import sys
 import random
-# Ensure utils/pb is in the Python path
+import json
+import logging
+import grpc
+from concurrent import futures
+import time
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
 from suggestions import suggestions_pb2 as suggestions
 from suggestions import suggestions_pb2_grpc as suggestions_grpc
-
-import grpc
-from concurrent import futures
-import logging
-
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - [%(levelname)s] - %(message)s",
-    level=logging.INFO  # Change to DEBUG for more details
-)
+from vector_clock import VectorClock
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Static list of books for suggestions
+# Static suggestions
 BOOKS = [
     "1984 by George Orwell",
     "To Kill a Mockingbird by Harper Lee",
@@ -35,33 +33,40 @@ BOOKS = [
     "DED MAXIM by Natig",
 ]
 
-# Create a class to define the server functions
+# Simulated order state
+orders = {}
+
 class SuggestionsService(suggestions_grpc.SuggestionsServicer):
     def GetBookSuggestions(self, request, context):
-        """Fetches book suggestions for a given user."""
-        logger.info(f"Received book suggestion request for User ID: {request.user_id} - Requesting {request.num_suggestions} books.")
+        order_id = request.user_id  # cheating: using user_id to pass order_id
+        if order_id not in orders:
+            orders[order_id] = {
+                "clock": VectorClock(["orchestrator", "transaction_verification", "fraud_detection", "suggestions"]),
+                "done": {}
+            }
 
-        num_suggestions = min(request.num_suggestions, len(BOOKS))
-        suggested_books = random.sample(BOOKS, num_suggestions)
+        state = orders[order_id]
 
-        response = suggestions.SuggestionsResponse()
-        response.books.extend(suggested_books)
+        # Simulate waiting for event (e) to be done
+        logger.info(f"[{order_id}] (f) Waiting for fraud check (e) to complete...")
+        time.sleep(0.5)  # simulate dependency wait
 
-        logger.info(f"Suggested books for User ID {request.user_id}: {suggested_books}")
-        return response
+        clock = state["clock"]
+        clock.increment("suggestions")
+
+        suggestions_list = random.sample(BOOKS, min(request.num_suggestions, len(BOOKS)))
+
+        logger.info(f"[{order_id}] (f) Suggesting {len(suggestions_list)} books | clock={clock}")
+
+        return suggestions.SuggestionsResponse(books=suggestions_list)
 
 def serve():
-    logger.info("Starting Book Suggestions gRPC service...")
-
     server = grpc.server(futures.ThreadPoolExecutor())
     suggestions_grpc.add_SuggestionsServicer_to_server(SuggestionsService(), server)
-    
-    port = "50053"
-    server.add_insecure_port("[::]:" + port)
+    server.add_insecure_port("[::]:50053")
+    logger.info("Suggestions Service running on port 50053")
     server.start()
-    logger.info(f"Suggestions service started. Listening on port {port}.")
     server.wait_for_termination()
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     serve()
