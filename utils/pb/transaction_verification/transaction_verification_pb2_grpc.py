@@ -44,6 +44,16 @@ class TransactionVerificationStub(object):
                 request_serializer=transaction__verification_dot_transaction__verification__pb2.OrderProcessRequest.SerializeToString,
                 response_deserializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.FromString,
                 _registered_method=True)
+        self.RunEvent = channel.unary_unary(
+                '/transaction_verification.TransactionVerification/RunEvent',
+                request_serializer=transaction__verification_dot_transaction__verification__pb2.EventRequest.SerializeToString,
+                response_deserializer=transaction__verification_dot_transaction__verification__pb2.EventResponse.FromString,
+                _registered_method=True)
+        self.ClearOrder = channel.unary_unary(
+                '/transaction_verification.TransactionVerification/ClearOrder',
+                request_serializer=transaction__verification_dot_transaction__verification__pb2.ClearRequest.SerializeToString,
+                response_deserializer=transaction__verification_dot_transaction__verification__pb2.ClearResponse.FromString,
+                _registered_method=True)
 
 
 class TransactionVerificationServicer(object):
@@ -61,6 +71,19 @@ class TransactionVerificationServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RunEvent(self, request, context):
+        """NEW
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ClearOrder(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_TransactionVerificationServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -73,6 +96,16 @@ def add_TransactionVerificationServicer_to_server(servicer, server):
                     servicer.ProcessOrder,
                     request_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderProcessRequest.FromString,
                     response_serializer=transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.SerializeToString,
+            ),
+            'RunEvent': grpc.unary_unary_rpc_method_handler(
+                    servicer.RunEvent,
+                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.EventRequest.FromString,
+                    response_serializer=transaction__verification_dot_transaction__verification__pb2.EventResponse.SerializeToString,
+            ),
+            'ClearOrder': grpc.unary_unary_rpc_method_handler(
+                    servicer.ClearOrder,
+                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.ClearRequest.FromString,
+                    response_serializer=transaction__verification_dot_transaction__verification__pb2.ClearResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -129,6 +162,60 @@ class TransactionVerification(object):
             '/transaction_verification.TransactionVerification/ProcessOrder',
             transaction__verification_dot_transaction__verification__pb2.OrderProcessRequest.SerializeToString,
             transaction__verification_dot_transaction__verification__pb2.TransactionVerificationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RunEvent(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/transaction_verification.TransactionVerification/RunEvent',
+            transaction__verification_dot_transaction__verification__pb2.EventRequest.SerializeToString,
+            transaction__verification_dot_transaction__verification__pb2.EventResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ClearOrder(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/transaction_verification.TransactionVerification/ClearOrder',
+            transaction__verification_dot_transaction__verification__pb2.ClearRequest.SerializeToString,
+            transaction__verification_dot_transaction__verification__pb2.ClearResponse.FromString,
             options,
             channel_credentials,
             insecure,

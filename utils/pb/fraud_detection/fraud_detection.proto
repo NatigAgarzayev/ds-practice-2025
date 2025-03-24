@@ -5,12 +5,16 @@ package fraud_detection;
 service FraudDetection {
   rpc CacheOrder(CachedOrderRequest) returns (CacheAck);
   rpc ProcessOrder(OrderProcessRequest) returns (FraudCheckResponse);
+
+  // NEW
+  rpc RunEvent(EventRequest) returns (EventResponse);
+  rpc ClearOrder(ClearRequest) returns (ClearResponse);
 }
 
 message CachedOrderRequest {
   string order_id = 1;
-  string payload = 2;       // JSON payload
-  string clock = 3;         // Serialized vector clock (JSON)
+  string payload = 2;
+  string clock = 3;
 }
 
 message OrderProcessRequest {
@@ -24,4 +28,28 @@ message FraudCheckResponse {
 
 message CacheAck {
   string message = 1;
+}
+
+// NEW
+message EventRequest {
+  string order_id = 1;
+  string event = 2;  // e.g. "d" or "e"
+  string clock = 3;
+}
+
+message EventResponse {
+  bool success = 1;
+  string message = 2;
+  string clock = 3;
+}
+
+message ClearRequest {
+  string order_id = 1;
+  string final_clock = 2;
+}
+
+message ClearResponse {
+  bool cleared = 1;
+  string service = 2;
+  string error = 3;
 }

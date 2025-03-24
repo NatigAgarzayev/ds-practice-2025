@@ -21,6 +21,40 @@ logger = logging.getLogger(__name__)
 orders = {}
 
 class FraudDetectionService(fraud_grpc.FraudDetectionServicer):
+    def ClearOrder(self, request, context):
+        order_id = request.order_id
+        final_clock = json.loads(request.final_clock)
+
+        if order_id not in orders:
+            return fraud.ClearResponse(
+                cleared=False,
+                service="fraud_detection",
+                error="Order not found"
+            )
+
+        local_clock = orders[order_id]["clock"].to_dict()
+
+        is_safe_to_clear = all(
+            local_clock.get(s, 0) <= final_clock.get(s, 0)
+            for s in final_clock
+        )
+
+        if is_safe_to_clear:
+            del orders[order_id]
+            logger.info(f"[{order_id}] Cleared successfully (VC ≤ VCf)")
+            return fraud.ClearResponse(
+                cleared=True,
+                service="fraud_detection",
+                error=""
+            )
+        else:
+            logger.warning(f"[{order_id}] Cannot clear: local VC > VCf")
+            return fraud.ClearResponse(
+                cleared=False,
+                service="fraud_detection",
+                error="Vector clock conflict — cannot clear safely"
+            )
+
     def CacheOrder(self, request, context):
         order_id = request.order_id
         data = json.loads(request.payload)

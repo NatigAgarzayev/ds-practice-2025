@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n7transaction_verification/transaction_verification.proto\x12\x18transaction_verification\"F\n\x12\x43\x61\x63hedOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x0f\n\x07payload\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"\'\n\x13OrderProcessRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\"D\n\x1fTransactionVerificationResponse\x12\x10\n\x08is_valid\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1b\n\x08\x43\x61\x63heAck\x12\x0f\n\x07message\x18\x01 \x01(\t2\xf3\x01\n\x17TransactionVerification\x12^\n\nCacheOrder\x12,.transaction_verification.CachedOrderRequest\x1a\".transaction_verification.CacheAck\x12x\n\x0cProcessOrder\x12-.transaction_verification.OrderProcessRequest\x1a\x39.transaction_verification.TransactionVerificationResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n7transaction_verification/transaction_verification.proto\x12\x18transaction_verification\"F\n\x12\x43\x61\x63hedOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x0f\n\x07payload\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"\'\n\x13OrderProcessRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\"D\n\x1fTransactionVerificationResponse\x12\x10\n\x08is_valid\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1b\n\x08\x43\x61\x63heAck\x12\x0f\n\x07message\x18\x01 \x01(\t\">\n\x0c\x45ventRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\r\n\x05\x65vent\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"@\n\rEventResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"5\n\x0c\x43learRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x13\n\x0b\x66inal_clock\x18\x02 \x01(\t\"@\n\rClearResponse\x12\x0f\n\x07\x63leared\x18\x01 \x01(\x08\x12\x0f\n\x07service\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t2\xaf\x03\n\x17TransactionVerification\x12^\n\nCacheOrder\x12,.transaction_verification.CachedOrderRequest\x1a\".transaction_verification.CacheAck\x12x\n\x0cProcessOrder\x12-.transaction_verification.OrderProcessRequest\x1a\x39.transaction_verification.TransactionVerificationResponse\x12[\n\x08RunEvent\x12&.transaction_verification.EventRequest\x1a\'.transaction_verification.EventResponse\x12]\n\nClearOrder\x12&.transaction_verification.ClearRequest\x1a\'.transaction_verification.ClearResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -39,6 +39,14 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_TRANSACTIONVERIFICATIONRESPONSE']._serialized_end=266
   _globals['_CACHEACK']._serialized_start=268
   _globals['_CACHEACK']._serialized_end=295
-  _globals['_TRANSACTIONVERIFICATION']._serialized_start=298
-  _globals['_TRANSACTIONVERIFICATION']._serialized_end=541
+  _globals['_EVENTREQUEST']._serialized_start=297
+  _globals['_EVENTREQUEST']._serialized_end=359
+  _globals['_EVENTRESPONSE']._serialized_start=361
+  _globals['_EVENTRESPONSE']._serialized_end=425
+  _globals['_CLEARREQUEST']._serialized_start=427
+  _globals['_CLEARREQUEST']._serialized_end=480
+  _globals['_CLEARRESPONSE']._serialized_start=482
+  _globals['_CLEARRESPONSE']._serialized_end=546
+  _globals['_TRANSACTIONVERIFICATION']._serialized_start=549
+  _globals['_TRANSACTIONVERIFICATION']._serialized_end=980
 # @@protoc_insertion_point(module_scope)

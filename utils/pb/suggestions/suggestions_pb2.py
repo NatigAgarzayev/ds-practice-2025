@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dsuggestions/suggestions.proto\x12\x0bsuggestions\">\n\x12SuggestionsRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x17\n\x0fnum_suggestions\x18\x02 \x01(\x05\"$\n\x13SuggestionsResponse\x12\r\n\x05\x62ooks\x18\x01 \x03(\t2f\n\x0bSuggestions\x12W\n\x12GetBookSuggestions\x12\x1f.suggestions.SuggestionsRequest\x1a .suggestions.SuggestionsResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dsuggestions/suggestions.proto\x12\x0bsuggestions\">\n\x12SuggestionsRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x17\n\x0fnum_suggestions\x18\x02 \x01(\x05\"$\n\x13SuggestionsResponse\x12\r\n\x05\x62ooks\x18\x01 \x03(\t\">\n\x0c\x45ventRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\r\n\x05\x65vent\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"@\n\rEventResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"5\n\x0c\x43learRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x13\n\x0b\x66inal_clock\x18\x02 \x01(\t\"@\n\rClearResponse\x12\x0f\n\x07\x63leared\x18\x01 \x01(\x08\x12\x0f\n\x07service\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t2\xee\x01\n\x0bSuggestions\x12W\n\x12GetBookSuggestions\x12\x1f.suggestions.SuggestionsRequest\x1a .suggestions.SuggestionsResponse\x12\x41\n\x08RunEvent\x12\x19.suggestions.EventRequest\x1a\x1a.suggestions.EventResponse\x12\x43\n\nClearOrder\x12\x19.suggestions.ClearRequest\x1a\x1a.suggestions.ClearResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,6 +35,14 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SUGGESTIONSREQUEST']._serialized_end=108
   _globals['_SUGGESTIONSRESPONSE']._serialized_start=110
   _globals['_SUGGESTIONSRESPONSE']._serialized_end=146
-  _globals['_SUGGESTIONS']._serialized_start=148
-  _globals['_SUGGESTIONS']._serialized_end=250
+  _globals['_EVENTREQUEST']._serialized_start=148
+  _globals['_EVENTREQUEST']._serialized_end=210
+  _globals['_EVENTRESPONSE']._serialized_start=212
+  _globals['_EVENTRESPONSE']._serialized_end=276
+  _globals['_CLEARREQUEST']._serialized_start=278
+  _globals['_CLEARREQUEST']._serialized_end=331
+  _globals['_CLEARRESPONSE']._serialized_start=333
+  _globals['_CLEARRESPONSE']._serialized_end=397
+  _globals['_SUGGESTIONS']._serialized_start=400
+  _globals['_SUGGESTIONS']._serialized_end=638
 # @@protoc_insertion_point(module_scope)

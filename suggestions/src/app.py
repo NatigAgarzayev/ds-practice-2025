@@ -37,6 +37,40 @@ BOOKS = [
 orders = {}
 
 class SuggestionsService(suggestions_grpc.SuggestionsServicer):
+    def ClearOrder(self, request, context):
+        order_id = request.order_id
+        final_clock = json.loads(request.final_clock)
+
+        if order_id not in orders:
+            return suggestions.ClearResponse(
+                cleared=False,
+                service="suggestions",
+                error="Order not found"
+            )
+
+        local_clock = orders[order_id]["clock"].to_dict()
+
+        is_safe_to_clear = all(
+            local_clock.get(s, 0) <= final_clock.get(s, 0)
+            for s in final_clock
+        )
+
+        if is_safe_to_clear:
+            del orders[order_id]
+            logger.info(f"[{order_id}] Cleared successfully (VC ≤ VCf)")
+            return suggestions.ClearResponse(
+                cleared=True,
+                service="suggestions",
+                error=""
+            )
+        else:
+            logger.warning(f"[{order_id}] Cannot clear: local VC > VCf")
+            return suggestions.ClearResponse(
+                cleared=False,
+                service="suggestions",
+                error="Vector clock conflict — cannot clear safely"
+            )
+
     def GetBookSuggestions(self, request, context):
         order_id = request.user_id  # cheating: using user_id to pass order_id
         if order_id not in orders:

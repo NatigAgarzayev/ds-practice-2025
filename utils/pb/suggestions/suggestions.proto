@@ -3,14 +3,42 @@ syntax = "proto3";
 package suggestions;
 
 service Suggestions {
-    rpc GetBookSuggestions (SuggestionsRequest) returns (SuggestionsResponse);
+  rpc GetBookSuggestions (SuggestionsRequest) returns (SuggestionsResponse);
+
+  // NEW
+  rpc RunEvent(EventRequest) returns (EventResponse);
+  rpc ClearOrder(ClearRequest) returns (ClearResponse);
 }
 
 message SuggestionsRequest {
-    string user_id = 1;
-    int32 num_suggestions = 2;
+  string user_id = 1;
+  int32 num_suggestions = 2;
 }
 
 message SuggestionsResponse {
-    repeated string books = 1;
+  repeated string books = 1;
+}
+
+// NEW
+message EventRequest {
+  string order_id = 1;
+  string event = 2;
+  string clock = 3;
+}
+
+message EventResponse {
+  bool success = 1;
+  string message = 2;
+  string clock = 3;
+}
+
+message ClearRequest {
+  string order_id = 1;
+  string final_clock = 2;
+}
+
+message ClearResponse {
+  bool cleared = 1;
+  string service = 2;
+  string error = 3;
 }

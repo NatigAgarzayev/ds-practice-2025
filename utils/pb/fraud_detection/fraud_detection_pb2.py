@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%fraud_detection/fraud_detection.proto\x12\x0f\x66raud_detection\"F\n\x12\x43\x61\x63hedOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x0f\n\x07payload\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"\'\n\x13OrderProcessRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\"<\n\x12\x46raudCheckResponse\x12\x15\n\ris_fraudulent\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1b\n\x08\x43\x61\x63heAck\x12\x0f\n\x07message\x18\x01 \x01(\t2\xb9\x01\n\x0e\x46raudDetection\x12L\n\nCacheOrder\x12#.fraud_detection.CachedOrderRequest\x1a\x19.fraud_detection.CacheAck\x12Y\n\x0cProcessOrder\x12$.fraud_detection.OrderProcessRequest\x1a#.fraud_detection.FraudCheckResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%fraud_detection/fraud_detection.proto\x12\x0f\x66raud_detection\"F\n\x12\x43\x61\x63hedOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x0f\n\x07payload\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"\'\n\x13OrderProcessRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\"<\n\x12\x46raudCheckResponse\x12\x15\n\ris_fraudulent\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1b\n\x08\x43\x61\x63heAck\x12\x0f\n\x07message\x18\x01 \x01(\t\">\n\x0c\x45ventRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\r\n\x05\x65vent\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"@\n\rEventResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\r\n\x05\x63lock\x18\x03 \x01(\t\"5\n\x0c\x43learRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x13\n\x0b\x66inal_clock\x18\x02 \x01(\t\"@\n\rClearResponse\x12\x0f\n\x07\x63leared\x18\x01 \x01(\x08\x12\x0f\n\x07service\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t2\xd1\x02\n\x0e\x46raudDetection\x12L\n\nCacheOrder\x12#.fraud_detection.CachedOrderRequest\x1a\x19.fraud_detection.CacheAck\x12Y\n\x0cProcessOrder\x12$.fraud_detection.OrderProcessRequest\x1a#.fraud_detection.FraudCheckResponse\x12I\n\x08RunEvent\x12\x1d.fraud_detection.EventRequest\x1a\x1e.fraud_detection.EventResponse\x12K\n\nClearOrder\x12\x1d.fraud_detection.ClearRequest\x1a\x1e.fraud_detection.ClearResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -39,6 +39,14 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_FRAUDCHECKRESPONSE']._serialized_end=231
   _globals['_CACHEACK']._serialized_start=233
   _globals['_CACHEACK']._serialized_end=260
-  _globals['_FRAUDDETECTION']._serialized_start=263
-  _globals['_FRAUDDETECTION']._serialized_end=448
+  _globals['_EVENTREQUEST']._serialized_start=262
+  _globals['_EVENTREQUEST']._serialized_end=324
+  _globals['_EVENTRESPONSE']._serialized_start=326
+  _globals['_EVENTRESPONSE']._serialized_end=390
+  _globals['_CLEARREQUEST']._serialized_start=392
+  _globals['_CLEARREQUEST']._serialized_end=445
+  _globals['_CLEARRESPONSE']._serialized_start=447
+  _globals['_CLEARRESPONSE']._serialized_end=511
+  _globals['_FRAUDDETECTION']._serialized_start=514
+  _globals['_FRAUDDETECTION']._serialized_end=851
 # @@protoc_insertion_point(module_scope)

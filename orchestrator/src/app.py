@@ -27,6 +27,42 @@ CORS(app)
 
 SERVICES = ["orchestrator", "transaction_verification", "fraud_detection", "suggestions"]
 
+def broadcast_clear_order(order_id, final_clock):
+    clock_json = json.dumps(final_clock.to_dict())
+    results = {}
+
+    def clear_txn():
+        with grpc.insecure_channel("transaction_verification:50052") as channel:
+            stub = txn_grpc.TransactionVerificationStub(channel)
+            resp = stub.ClearOrder(txn.ClearRequest(order_id=order_id, final_clock=clock_json))
+            results["transaction_verification"] = resp
+
+    def clear_fraud():
+        with grpc.insecure_channel("fraud_detection:50051") as channel:
+            stub = fraud_grpc.FraudDetectionStub(channel)
+            resp = stub.ClearOrder(fraud.ClearRequest(order_id=order_id, final_clock=clock_json))
+            results["fraud_detection"] = resp
+
+    def clear_suggestions():
+        with grpc.insecure_channel("suggestions:50053") as channel:
+            stub = sugg_grpc.SuggestionsStub(channel)
+            resp = stub.ClearOrder(sugg.ClearRequest(order_id=order_id, final_clock=clock_json))
+            results["suggestions"] = resp
+
+    threads = [
+        threading.Thread(target=clear_txn),
+        threading.Thread(target=clear_fraud),
+        threading.Thread(target=clear_suggestions)
+    ]
+
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    logger.info(f"[{order_id}] Broadcast clear results:")
+    for service, resp in results.items():
+        logger.info(f"  - {service}: cleared={resp.cleared}, error={resp.error}")
+
+
 @app.route("/checkout", methods=["POST"])
 def checkout():
     data = request.get_json()
@@ -88,6 +124,8 @@ def checkout():
     books = [{"title": b} for b in suggs.books]
     logger.info(f"[{order_id}] Order Approved! Suggested books: {books}")
 
+    broadcast_clear_order(order_id, clock)
+    
     return jsonify({
         "orderId": order_id,
         "status": "Order Approved",
