@@ -8,16 +8,20 @@ import grpc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
-from transaction_verification import transaction_verification_pb2 as txn
-from transaction_verification import transaction_verification_pb2_grpc as txn_grpc
-from fraud_detection import fraud_detection_pb2 as fraud
-from fraud_detection import fraud_detection_pb2_grpc as fraud_grpc
-from suggestions import suggestions_pb2 as sugg
-from suggestions import suggestions_pb2_grpc as sugg_grpc
+from utils.pb.transaction_verification import transaction_verification_pb2 as txn
+from utils.pb.transaction_verification import transaction_verification_pb2_grpc as txn_grpc
+from utils.pb.fraud_detection import fraud_detection_pb2 as fraud
+from utils.pb.fraud_detection import fraud_detection_pb2_grpc as fraud_grpc
+from utils.pb.suggestions import suggestions_pb2 as sugg
+from utils.pb.suggestions import suggestions_pb2_grpc as sugg_grpc
+from utils.pb.order_queue import order_queue_pb2 as queue_pb2
+from utils.pb.order_queue import order_queue_pb2_grpc as queue_grpc
+
 from vector_clock import VectorClock
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -124,6 +128,32 @@ def checkout():
     books = [{"title": b} for b in suggs.books]
     logger.info(f"[{order_id}] Order Approved! Suggested books: {books}")
 
+    # 5. Enqueue order to the order queue (with priority fields)
+    num_items = len(data.get("items", []))
+    is_premium = data.get("user", {}).get("premium", False)
+    shipping_method = data.get("shippingMethod", "Standard")
+
+    with grpc.insecure_channel("order_queue:50054") as channel:
+        stub = queue_grpc.OrderQueueStub(channel)
+        ack = stub.Enqueue(queue_pb2.OrderRequest(
+            order_id=order_id,
+            num_items=num_items,
+            is_premium=is_premium,
+            shipping_method=shipping_method
+        ))
+
+        if not ack.success:
+            logger.error(f"[{order_id}] Failed to enqueue: {ack.message}")
+            return jsonify({
+                "orderId": order_id,
+                "status": "Failed to enqueue",
+                "suggestedBooks": []
+            })
+
+        logger.info(f"[{order_id}] Successfully enqueued to OrderQueue with priority")
+
+
+    # ✅ 6. Now broadcast to clear order data (after enqueue)
     broadcast_clear_order(order_id, clock)
     
     return jsonify({

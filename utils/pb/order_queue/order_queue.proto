@@ -1,0 +1,26 @@
+syntax = "proto3";
+package utils.pb.order_queue;
+
+service OrderQueue {
+  rpc Enqueue(OrderRequest) returns (QueueAck);
+  rpc Dequeue(Empty) returns (OrderResponse);
+}
+
+message OrderRequest {
+  string order_id = 1;
+  int32 num_items = 2;
+  bool is_premium = 3;
+  string shipping_method = 4;
+}
+
+message QueueAck {
+  bool success = 1;
+  string message = 2;
+}
+
+message Empty {}
+
+message OrderResponse {
+  string order_id = 1;
+  bool has_order = 2;
+}

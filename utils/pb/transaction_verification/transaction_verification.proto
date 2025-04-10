@@ -1,6 +1,5 @@
 syntax = "proto3";
-
-package transaction_verification;
+package utils.pb.transaction_verification;
 
 service TransactionVerification {
   rpc CacheOrder(CachedOrderRequest) returns (CacheAck);

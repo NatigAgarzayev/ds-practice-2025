@@ -7,14 +7,14 @@ import threading
 from concurrent import futures
 import grpc
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+# ✅ Ensure utils is importable
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
-from fraud_detection import fraud_detection_pb2 as fraud
-from fraud_detection import fraud_detection_pb2_grpc as fraud_grpc
+from utils.pb.fraud_detection import fraud_detection_pb2 as fraud
+from utils.pb.fraud_detection import fraud_detection_pb2_grpc as fraud_grpc
 from vector_clock import VectorClock
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,6 @@ class FraudDetectionService(fraud_grpc.FraudDetectionServicer):
             )
 
         local_clock = orders[order_id]["clock"].to_dict()
-
         is_safe_to_clear = all(
             local_clock.get(s, 0) <= final_clock.get(s, 0)
             for s in final_clock
@@ -64,7 +63,8 @@ class FraudDetectionService(fraud_grpc.FraudDetectionServicer):
         orders[order_id] = {
             "data": data,
             "clock": clock,
-            "results": {}
+            "results": {},
+            "upstream": {"b": True, "c": True}  # preload for demo
         }
 
         logger.info(f"[{order_id}] Cached fraud order. Initial clock: {clock}")
@@ -84,36 +84,24 @@ class FraudDetectionService(fraud_grpc.FraudDetectionServicer):
 
         logger.info(f"[{order_id}] Starting Fraud Detection Events")
 
-        # Event (d): user fraud check, depends on (b)
         def event_d():
-            while 'b' not in state.get("upstream", {}): pass
+            while 'b' not in state["upstream"]: pass
             clock.increment("fraud_detection")
             user = data.get("user", {})
             is_fraud_user = user.get("name", "") == "fraudy"
             results["d"] = is_fraud_user
             logger.info(f"[{order_id}] (d) User fraud check → {is_fraud_user} | clock={clock}")
 
-        # Event (e): credit card fraud, depends on (c) and (d)
         def event_e():
-            while 'c' not in state.get("upstream", {}) or 'd' not in results: pass
+            while 'c' not in state["upstream"] or 'd' not in results: pass
             clock.increment("fraud_detection")
             card = data.get("creditCard", {}).get("number", "")
             is_fraud_card = card.startswith("0000") or random.choice([False, True])
             results["e"] = is_fraud_card
             logger.info(f"[{order_id}] (e) Credit card fraud check → {is_fraud_card} | clock={clock}")
 
-        # simulate upstream vector events being injected (by orchestrator)
-        if "upstream" not in state:
-            state["upstream"] = {}
-
-        # let’s assume orchestrator preloads upstream vector results
-        # inject fake values to unblock concurrency for demo/testing
-        state["upstream"]["b"] = True
-        state["upstream"]["c"] = True
-
         t_d = threading.Thread(target=event_d)
         t_e = threading.Thread(target=event_e)
-
         t_d.start()
         t_e.start()
         t_d.join()

@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from utils.pb.suggestions import suggestions_pb2 as utils_dot_pb_dot_suggestions_dot_suggestions__pb2
+from utils.pb.executor import executor_pb2 as utils_dot_pb_dot_executor_dot_executor__pb2
 
 GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in utils/pb/suggestions/suggestions_pb2_grpc.py depends on'
+        + f' but the generated code in utils/pb/executor/executor_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class SuggestionsStub(object):
+class ExecutorStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -34,76 +34,75 @@ class SuggestionsStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetBookSuggestions = channel.unary_unary(
-                '/utils.pb.suggestions.Suggestions/GetBookSuggestions',
-                request_serializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.SuggestionsRequest.SerializeToString,
-                response_deserializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.SuggestionsResponse.FromString,
+        self.GetExecutorID = channel.unary_unary(
+                '/pb.executor.Executor/GetExecutorID',
+                request_serializer=utils_dot_pb_dot_executor_dot_executor__pb2.Empty.SerializeToString,
+                response_deserializer=utils_dot_pb_dot_executor_dot_executor__pb2.ExecutorID.FromString,
                 _registered_method=True)
-        self.RunEvent = channel.unary_unary(
-                '/utils.pb.suggestions.Suggestions/RunEvent',
-                request_serializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.EventRequest.SerializeToString,
-                response_deserializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.EventResponse.FromString,
+        self.AnnounceLeader = channel.unary_unary(
+                '/pb.executor.Executor/AnnounceLeader',
+                request_serializer=utils_dot_pb_dot_executor_dot_executor__pb2.ExecutorID.SerializeToString,
+                response_deserializer=utils_dot_pb_dot_executor_dot_executor__pb2.Ack.FromString,
                 _registered_method=True)
-        self.ClearOrder = channel.unary_unary(
-                '/utils.pb.suggestions.Suggestions/ClearOrder',
-                request_serializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.ClearRequest.SerializeToString,
-                response_deserializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.ClearResponse.FromString,
+        self.IsAlive = channel.unary_unary(
+                '/pb.executor.Executor/IsAlive',
+                request_serializer=utils_dot_pb_dot_executor_dot_executor__pb2.Empty.SerializeToString,
+                response_deserializer=utils_dot_pb_dot_executor_dot_executor__pb2.Ack.FromString,
                 _registered_method=True)
 
 
-class SuggestionsServicer(object):
+class ExecutorServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def GetBookSuggestions(self, request, context):
+    def GetExecutorID(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def RunEvent(self, request, context):
-        """NEW
-        """
+    def AnnounceLeader(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def ClearOrder(self, request, context):
+    def IsAlive(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_SuggestionsServicer_to_server(servicer, server):
+def add_ExecutorServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetBookSuggestions': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetBookSuggestions,
-                    request_deserializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.SuggestionsRequest.FromString,
-                    response_serializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.SuggestionsResponse.SerializeToString,
+            'GetExecutorID': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetExecutorID,
+                    request_deserializer=utils_dot_pb_dot_executor_dot_executor__pb2.Empty.FromString,
+                    response_serializer=utils_dot_pb_dot_executor_dot_executor__pb2.ExecutorID.SerializeToString,
             ),
-            'RunEvent': grpc.unary_unary_rpc_method_handler(
-                    servicer.RunEvent,
-                    request_deserializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.EventRequest.FromString,
-                    response_serializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.EventResponse.SerializeToString,
+            'AnnounceLeader': grpc.unary_unary_rpc_method_handler(
+                    servicer.AnnounceLeader,
+                    request_deserializer=utils_dot_pb_dot_executor_dot_executor__pb2.ExecutorID.FromString,
+                    response_serializer=utils_dot_pb_dot_executor_dot_executor__pb2.Ack.SerializeToString,
             ),
-            'ClearOrder': grpc.unary_unary_rpc_method_handler(
-                    servicer.ClearOrder,
-                    request_deserializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.ClearRequest.FromString,
-                    response_serializer=utils_dot_pb_dot_suggestions_dot_suggestions__pb2.ClearResponse.SerializeToString,
+            'IsAlive': grpc.unary_unary_rpc_method_handler(
+                    servicer.IsAlive,
+                    request_deserializer=utils_dot_pb_dot_executor_dot_executor__pb2.Empty.FromString,
+                    response_serializer=utils_dot_pb_dot_executor_dot_executor__pb2.Ack.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'utils.pb.suggestions.Suggestions', rpc_method_handlers)
+            'pb.executor.Executor', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('utils.pb.suggestions.Suggestions', rpc_method_handlers)
+    server.add_registered_method_handlers('pb.executor.Executor', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class Suggestions(object):
+class Executor(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def GetBookSuggestions(request,
+    def GetExecutorID(request,
             target,
             options=(),
             channel_credentials=None,
@@ -116,9 +115,9 @@ class Suggestions(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/utils.pb.suggestions.Suggestions/GetBookSuggestions',
-            utils_dot_pb_dot_suggestions_dot_suggestions__pb2.SuggestionsRequest.SerializeToString,
-            utils_dot_pb_dot_suggestions_dot_suggestions__pb2.SuggestionsResponse.FromString,
+            '/pb.executor.Executor/GetExecutorID',
+            utils_dot_pb_dot_executor_dot_executor__pb2.Empty.SerializeToString,
+            utils_dot_pb_dot_executor_dot_executor__pb2.ExecutorID.FromString,
             options,
             channel_credentials,
             insecure,
@@ -130,7 +129,7 @@ class Suggestions(object):
             _registered_method=True)
 
     @staticmethod
-    def RunEvent(request,
+    def AnnounceLeader(request,
             target,
             options=(),
             channel_credentials=None,
@@ -143,9 +142,9 @@ class Suggestions(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/utils.pb.suggestions.Suggestions/RunEvent',
-            utils_dot_pb_dot_suggestions_dot_suggestions__pb2.EventRequest.SerializeToString,
-            utils_dot_pb_dot_suggestions_dot_suggestions__pb2.EventResponse.FromString,
+            '/pb.executor.Executor/AnnounceLeader',
+            utils_dot_pb_dot_executor_dot_executor__pb2.ExecutorID.SerializeToString,
+            utils_dot_pb_dot_executor_dot_executor__pb2.Ack.FromString,
             options,
             channel_credentials,
             insecure,
@@ -157,7 +156,7 @@ class Suggestions(object):
             _registered_method=True)
 
     @staticmethod
-    def ClearOrder(request,
+    def IsAlive(request,
             target,
             options=(),
             channel_credentials=None,
@@ -170,9 +169,9 @@ class Suggestions(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/utils.pb.suggestions.Suggestions/ClearOrder',
-            utils_dot_pb_dot_suggestions_dot_suggestions__pb2.ClearRequest.SerializeToString,
-            utils_dot_pb_dot_suggestions_dot_suggestions__pb2.ClearResponse.FromString,
+            '/pb.executor.Executor/IsAlive',
+            utils_dot_pb_dot_executor_dot_executor__pb2.Empty.SerializeToString,
+            utils_dot_pb_dot_executor_dot_executor__pb2.Ack.FromString,
             options,
             channel_credentials,
             insecure,

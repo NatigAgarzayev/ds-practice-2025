@@ -2,16 +2,18 @@ import os
 import sys
 import json
 import logging
+import threading
 from concurrent import futures
 import grpc
-import threading
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+# ✅ Fix Python path for utils and pb packages
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
-from transaction_verification import transaction_verification_pb2 as txn
-from transaction_verification import transaction_verification_pb2_grpc as txn_grpc
-from vector_clock import VectorClock
+from utils.pb.transaction_verification import transaction_verification_pb2_grpc as txn_grpc
+from utils.pb.transaction_verification import transaction_verification_pb2 as txn
+from utils.vector_clock import VectorClock
+
 
 # Setup logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -32,8 +34,6 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
             )
 
         local_clock = orders[order_id]["clock"].to_dict()
-
-        # Compare vector clocks
         is_safe_to_clear = all(
             local_clock.get(s, 0) <= final_clock.get(s, 0)
             for s in final_clock
@@ -59,7 +59,6 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
         order_id = request.order_id
         data = json.loads(request.payload)
         clock = VectorClock(["orchestrator", "transaction_verification", "fraud_detection", "suggestions"])
-
         clock.from_dict(json.loads(request.clock))
 
         orders[order_id] = {
@@ -85,14 +84,12 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
 
         logger.info(f"[{order_id}] Starting Transaction Verification Events")
 
-        # Event (a): verify items
         def event_a():
             clock.increment("transaction_verification")
             items_ok = len(data.get("items", [])) > 0
             results['a'] = items_ok
             logger.info(f"[{order_id}] (a) Verify items → {items_ok} | clock={clock}")
 
-        # Event (b): verify user info
         def event_b():
             clock.increment("transaction_verification")
             user = data.get("user", {})
@@ -101,10 +98,9 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
             results['b'] = user_ok
             logger.info(f"[{order_id}] (b) Verify user → {user_ok} | clock={clock}")
 
-        # Event (c): verify credit card format (depends on a)
         def event_c():
             while 'a' not in results:
-                pass  # wait for a to finish
+                pass  # wait for (a) to complete
             clock.increment("transaction_verification")
             cc = data.get("creditCard", {}).get("number", "")
             cc_ok = isinstance(cc, str) and len(cc) == 16 and cc.isdigit()
@@ -127,7 +123,6 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
         message = "Valid" if is_valid else "Invalid"
 
         logger.info(f"[{order_id}] Transaction result: {message} | Final Clock: {clock}")
-
         return txn.TransactionVerificationResponse(is_valid=is_valid, message=message)
 
 def serve():

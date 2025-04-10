@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package pb.executor;
+
+service Executor {
+  rpc GetExecutorID(Empty) returns (ExecutorID);
+  rpc AnnounceLeader(ExecutorID) returns (Ack);
+  rpc IsAlive(Empty) returns (Ack);
+}
+
+message Empty {}
+
+message ExecutorID {
+  string id = 1;
+}
+
+message Ack {
+  bool success = 1;
+  string message = 2;
+}

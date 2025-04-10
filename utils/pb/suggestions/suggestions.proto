@@ -1,6 +1,5 @@
 syntax = "proto3";
-
-package suggestions;
+package utils.pb.suggestions;
 
 service Suggestions {
   rpc GetBookSuggestions (SuggestionsRequest) returns (SuggestionsResponse);

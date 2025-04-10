@@ -7,17 +7,17 @@ import grpc
 from concurrent import futures
 import time
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils/pb")))
+# ✅ Fix Python path for both utils and pb modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
-from suggestions import suggestions_pb2 as suggestions
-from suggestions import suggestions_pb2_grpc as suggestions_grpc
+from utils.pb.suggestions import suggestions_pb2 as suggestions
+from utils.pb.suggestions import suggestions_pb2_grpc as suggestions_grpc
 from vector_clock import VectorClock
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Static suggestions
 BOOKS = [
     "1984 by George Orwell",
     "To Kill a Mockingbird by Harper Lee",
@@ -33,7 +33,6 @@ BOOKS = [
     "DED MAXIM by Natig",
 ]
 
-# Simulated order state
 orders = {}
 
 class SuggestionsService(suggestions_grpc.SuggestionsServicer):
@@ -49,7 +48,6 @@ class SuggestionsService(suggestions_grpc.SuggestionsServicer):
             )
 
         local_clock = orders[order_id]["clock"].to_dict()
-
         is_safe_to_clear = all(
             local_clock.get(s, 0) <= final_clock.get(s, 0)
             for s in final_clock
@@ -58,21 +56,13 @@ class SuggestionsService(suggestions_grpc.SuggestionsServicer):
         if is_safe_to_clear:
             del orders[order_id]
             logger.info(f"[{order_id}] Cleared successfully (VC ≤ VCf)")
-            return suggestions.ClearResponse(
-                cleared=True,
-                service="suggestions",
-                error=""
-            )
+            return suggestions.ClearResponse(cleared=True, service="suggestions", error="")
         else:
             logger.warning(f"[{order_id}] Cannot clear: local VC > VCf")
-            return suggestions.ClearResponse(
-                cleared=False,
-                service="suggestions",
-                error="Vector clock conflict — cannot clear safely"
-            )
+            return suggestions.ClearResponse(cleared=False, service="suggestions", error="Vector clock conflict — cannot clear safely")
 
     def GetBookSuggestions(self, request, context):
-        order_id = request.user_id  # cheating: using user_id to pass order_id
+        order_id = request.user_id
         if order_id not in orders:
             orders[order_id] = {
                 "clock": VectorClock(["orchestrator", "transaction_verification", "fraud_detection", "suggestions"]),
@@ -80,16 +70,13 @@ class SuggestionsService(suggestions_grpc.SuggestionsServicer):
             }
 
         state = orders[order_id]
-
-        # Simulate waiting for event (e) to be done
-        logger.info(f"[{order_id}] (f) Waiting for fraud check (e) to complete...")
-        time.sleep(0.5)  # simulate dependency wait
-
         clock = state["clock"]
+
+        logger.info(f"[{order_id}] (f) Waiting for fraud check (e) to complete...")
+        time.sleep(0.5)
+
         clock.increment("suggestions")
-
         suggestions_list = random.sample(BOOKS, min(request.num_suggestions, len(BOOKS)))
-
         logger.info(f"[{order_id}] (f) Suggesting {len(suggestions_list)} books | clock={clock}")
 
         return suggestions.SuggestionsResponse(books=suggestions_list)

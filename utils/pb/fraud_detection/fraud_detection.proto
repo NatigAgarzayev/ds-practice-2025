@@ -1,6 +1,6 @@
 syntax = "proto3";
+package utils.pb.fraud_detection;
 
-package fraud_detection;
 
 service FraudDetection {
   rpc CacheOrder(CachedOrderRequest) returns (CacheAck);
