@@ -14,7 +14,6 @@ from utils.pb.transaction_verification import transaction_verification_pb2_grpc 
 from utils.pb.transaction_verification import transaction_verification_pb2 as txn
 from utils.vector_clock import VectorClock
 
-
 # Setup logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -41,14 +40,14 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
 
         if is_safe_to_clear:
             del orders[order_id]
-            logger.info(f"[{order_id}] Cleared successfully (VC ≤ VCf)")
+            logger.info(f"[{order_id}] ✅ Cleared successfully (VC ≤ VCf) | local={local_clock}")
             return txn.ClearResponse(
                 cleared=True,
                 service="transaction_verification",
                 error=""
             )
         else:
-            logger.warning(f"[{order_id}] Cannot clear: local VC > VCf")
+            logger.warning(f"[{order_id}] ❌ Cannot clear: local VC > VCf | local={local_clock}, final={final_clock}")
             return txn.ClearResponse(
                 cleared=False,
                 service="transaction_verification",
@@ -67,7 +66,7 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
             "results": {}
         }
 
-        logger.info(f"[{order_id}] Cached order with initial clock: {clock}")
+        logger.info(f"[{order_id}] 📨 Cached order | Initial clock: {clock}")
         return txn.CacheAck(message="Order cached")
 
     def ProcessOrder(self, request, context):
@@ -82,7 +81,7 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
         data = state["data"]
         results = state["results"]
 
-        logger.info(f"[{order_id}] Starting Transaction Verification Events")
+        logger.info(f"[{order_id}] 🧠 Starting Transaction Verification Events")
 
         def event_a():
             clock.increment("transaction_verification")
@@ -122,7 +121,7 @@ class TransactionVerificationService(txn_grpc.TransactionVerificationServicer):
         is_valid = all([results['a'], results['b'], results['c']])
         message = "Valid" if is_valid else "Invalid"
 
-        logger.info(f"[{order_id}] Transaction result: {message} | Final Clock: {clock}")
+        logger.info(f"[{order_id}] ✅ Transaction result: {message} | Final Clock: {clock}")
         return txn.TransactionVerificationResponse(is_valid=is_valid, message=message)
 
 def serve():

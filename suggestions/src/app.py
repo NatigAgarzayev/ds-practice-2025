@@ -55,10 +55,10 @@ class SuggestionsService(suggestions_grpc.SuggestionsServicer):
 
         if is_safe_to_clear:
             del orders[order_id]
-            logger.info(f"[{order_id}] Cleared successfully (VC ≤ VCf)")
+            logger.info(f"[{order_id}] Cleared successfully (VC ≤ VCf) | clock={local_clock}")
             return suggestions.ClearResponse(cleared=True, service="suggestions", error="")
         else:
-            logger.warning(f"[{order_id}] Cannot clear: local VC > VCf")
+            logger.warning(f"[{order_id}] Cannot clear: local VC > VCf | local={local_clock}, final={final_clock}")
             return suggestions.ClearResponse(cleared=False, service="suggestions", error="Vector clock conflict — cannot clear safely")
 
     def GetBookSuggestions(self, request, context):
@@ -77,7 +77,8 @@ class SuggestionsService(suggestions_grpc.SuggestionsServicer):
 
         clock.increment("suggestions")
         suggestions_list = random.sample(BOOKS, min(request.num_suggestions, len(BOOKS)))
-        logger.info(f"[{order_id}] (f) Suggesting {len(suggestions_list)} books | clock={clock}")
+        logger.info(f"[{order_id}] (f) Suggesting {len(suggestions_list)} books → {suggestions_list}")
+        logger.info(f"[{order_id}] (f) Vector Clock after suggestions: {clock}")
 
         return suggestions.SuggestionsResponse(books=suggestions_list)
 

@@ -8,9 +8,11 @@ import grpc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# ✅ Add project and utils paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
+# gRPC stubs
 from utils.pb.transaction_verification import transaction_verification_pb2 as txn
 from utils.pb.transaction_verification import transaction_verification_pb2_grpc as txn_grpc
 from utils.pb.fraud_detection import fraud_detection_pb2 as fraud
@@ -22,7 +24,7 @@ from utils.pb.order_queue import order_queue_pb2_grpc as queue_grpc
 
 from vector_clock import VectorClock
 
-
+# Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,8 @@ SERVICES = ["orchestrator", "transaction_verification", "fraud_detection", "sugg
 def broadcast_clear_order(order_id, final_clock):
     clock_json = json.dumps(final_clock.to_dict())
     results = {}
+
+    logger.info(f"[{order_id}] Broadcasting final VCf to clear state: {final_clock}")
 
     def clear_txn():
         with grpc.insecure_channel("transaction_verification:50052") as channel:
@@ -75,6 +79,7 @@ def checkout():
 
     clock = VectorClock(SERVICES)
     clock.increment("orchestrator")
+    logger.info(f"[{order_id}] Initial Vector Clock: {clock}")
 
     payload = json.dumps(data)
     clock_json = json.dumps(clock.to_dict())
@@ -94,7 +99,7 @@ def checkout():
     cache_fraud()
     logger.info(f"[{order_id}] Order cached in services.")
 
-    # 2. Trigger Transaction Verification ProcessOrder (a, b, c)
+    # 2. Trigger Transaction Verification (a, b, c)
     with grpc.insecure_channel("transaction_verification:50052") as channel:
         stub = txn_grpc.TransactionVerificationStub(channel)
         verify_result = stub.ProcessOrder(txn.OrderProcessRequest(order_id=order_id))
@@ -107,7 +112,7 @@ def checkout():
             "suggestedBooks": []
         })
 
-    # 3. Trigger Fraud Detection ProcessOrder (d, e)
+    # 3. Trigger Fraud Detection (d, e)
     with grpc.insecure_channel("fraud_detection:50051") as channel:
         stub = fraud_grpc.FraudDetectionStub(channel)
         fraud_result = stub.ProcessOrder(fraud.OrderProcessRequest(order_id=order_id))
@@ -128,7 +133,7 @@ def checkout():
     books = [{"title": b} for b in suggs.books]
     logger.info(f"[{order_id}] Order Approved! Suggested books: {books}")
 
-    # 5. Enqueue order to the order queue (with priority fields)
+    # 5. Enqueue to OrderQueue with priority
     num_items = len(data.get("items", []))
     is_premium = data.get("user", {}).get("premium", False)
     shipping_method = data.get("shippingMethod", "Standard")
@@ -152,10 +157,9 @@ def checkout():
 
         logger.info(f"[{order_id}] Successfully enqueued to OrderQueue with priority")
 
-
-    # ✅ 6. Now broadcast to clear order data (after enqueue)
+    # 6. Final broadcast to clear backend state
     broadcast_clear_order(order_id, clock)
-    
+
     return jsonify({
         "orderId": order_id,
         "status": "Order Approved",

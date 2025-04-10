@@ -12,7 +12,7 @@
             <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Checkout Page</h1>
 
             <div class="mb-6">
-                <h2 class="text-lg font-semibold text-gray-700">Items</h2>
+                <h2 class="text-lg font-semibold text-gray-700">Books</h2>
                 <ul id="itemList" class="list-none p-0 mt-2 space-y-2">
                     <!-- Items will be dynamically rendered here -->
                 </ul>
@@ -76,11 +76,32 @@
     </div>
 
     <script>
-        const items = [
-            { name: "Book A", quantity: 1 },
-            { name: "Book B", quantity: 2 }
+        const ALL_BOOKS = [
+            "1984 by George Orwell",
+            "To Kill a Mockingbird by Harper Lee",
+            "The Great Gatsby by F. Scott Fitzgerald",
+            "Moby Dick by Herman Melville",
+            "Pride and Prejudice by Jane Austen",
+            "War and Peace by Leo Tolstoy",
+            "The Catcher in the Rye by J.D. Salinger",
+            "Brave New World by Aldous Huxley",
+            "Ulysses by James Joyce",
+            "The Hobbit by J.R.R. Tolkien",
+            "Natig Agharzayev - How To Buy for 300 and Sell for 86",
+            "Natig Agharzayev - How to Become Addicted to AI",
         ];
-
+    
+        function getRandomBooks() {
+            const shuffled = ALL_BOOKS.sort(() => 0.5 - Math.random());
+            const count = Math.floor(Math.random() * 5) + 1; // 1 to 5 books
+            return shuffled.slice(0, count).map(title => ({
+                name: title,
+                quantity: Math.floor(Math.random() * 3) + 1  // Quantity 1 to 3
+            }));
+        }
+    
+        const items = getRandomBooks();
+    
         const itemListElement = document.getElementById('itemList');
         items.forEach(item => {
             const li = document.createElement('li');
@@ -88,10 +109,10 @@
             li.className = "bg-gray-100 p-3 rounded-lg";
             itemListElement.appendChild(li);
         });
-
+    
         document.getElementById('checkoutForm').addEventListener('submit', async function(event) {
             event.preventDefault();
-
+    
             const formData = new FormData(event.target);
             const data = {
                 user: {
@@ -117,7 +138,7 @@
                 giftWrapping: formData.get('giftWrapping') === 'on',
                 termsAccepted: formData.get('terms') === 'on',
             };
-
+    
             try {
                 const response = await fetch('http://localhost:8081/checkout', {
                     method: 'POST',
@@ -126,30 +147,29 @@
                     },
                     body: JSON.stringify(data),
                 });
-
+    
                 const result = await response.json();
                 const responseDiv = document.getElementById('response');
-
+    
                 if (response.ok) {
                     const suggestedBooks = result.suggestedBooks.map(book => `<li>${book.title}</li>`).join('');
                     responseDiv.innerHTML = `
                         <strong>Order status: ${result.status}</strong><br>
                         Order ID: ${result.orderId}<br>
+                        ${data.user.premium ? '<span class="text-yellow-600">💎 Premium user order — handled with priority!</span><br>' : ''}
                         ${result.status === "Order Approved" ?
                             `Suggested Books:
                             <ul class="list-disc pl-5 mt-2 space-y-1">${suggestedBooks}</ul>`
-                        : ``
-                        }
+                        : ``}
                     `;
-                    color = result.status === 'Order Approved' ? 'green' : 'red';
+                    const color = result.status === 'Order Approved' ? 'green' : 'red';
                     responseDiv.className = `mt-6 p-4 border rounded-lg bg-${color}-100 text-${color}-700`;
                 } else {
                     responseDiv.textContent = `Error: ${result.error.message}`;
                     responseDiv.className = "mt-6 p-4 border rounded-lg bg-red-100 text-red-700";
                 }
-
+    
                 responseDiv.style.display = 'block';
-                // scroll to the bottom of the page
                 window.scrollTo(0, document.body.scrollHeight);
             } catch (error) {
                 const responseDiv = document.getElementById('response');
