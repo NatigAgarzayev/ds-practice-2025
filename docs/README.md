@@ -7,6 +7,8 @@ It is microservices based python flask web application where you can order books
 We have 3 microservices. They are Fraud Detection system, Transaction Verification system, Suggestions system. All these 3 services are ran by a orchestrator which contains the main general interaction logic between microservices and also responsible for the chekout process.
 We used proto schemas for estbalishing DB prototype.    
 
+We have added 2 more services: executor and order_queue. We have implemented vectors clocks, queue, executors and leader elections.
+
 ## Installation
 In order to launch launch your docker desktop, then move to the project directory:
 ```sh
@@ -31,94 +33,99 @@ Finally, open on the browser,
 ```
 
 ## Folder structure
-C:\USERS\99470\DESKTOP\DS-PRACTICE-2025
-│   .gitignore
-│   docker-compose.yaml
-│   README.md
+.
+├── .gitignore
+├── docker-compose.yaml
+├── README.md
 │
-├───docs
-│   └── README.md
+├── docs/
+│   ├── README.md
+│   ├── architecture_diagram.png
+│   ├── folder_structure.txt
+│   └── system_diagram.png
 │
-├───fraud_detection
-│   │   Dockerfile
-│   │   requirements.txt
-│   │
-│   └───src
+├── executor/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── src/
 │       └── app.py
 │
-├───frontend
-│   │   Dockerfile
-│   │
-│   └───src
+├── fraud_detection/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── src/
+│       └── app.py
+│
+├── frontend/
+│   ├── Dockerfile
+│   └── src/
 │       └── index.html
 │
-├───orchestrator
-│   │   Dockerfile
-│   │   requirements.txt
-│   │
-│   └───src
+├── orchestrator/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── src/
 │       └── app.py
 │
-├───suggestions
-│   │   Dockerfile
-│   │   requirements.txt
-│   │
-│   └───src
+├── order_queue/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── src/
 │       └── app.py
 │
-├───transaction_verification
-│   │   Dockerfile
-│   │   requirements.txt
-│   │
-│   └───src
+├── suggestions/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── src/
 │       └── app.py
 │
-└───utils
-    │   README.md
-    │   vector_clock.py   
-    ├───api
-    │   │   bookstore.yaml
-    │   │   fintech.yaml
-    │   │   ridehailing.yaml
-    │
-    ├───other
+├── transaction_verification/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── src/
+│       └── app.py
+│
+└── utils/
+    ├── README.md
+    ├── vector_clock.py
+    ├── api/
+    │   ├── bookstore.yaml
+    │   ├── fintech.yaml
+    │   └── ridehailing.yaml
+    ├── other/
     │   └── hotreload.py
-    │
-    └───pb
-        │   __init__.py
-        │
-        ├───fraud_detection
-        │   │   fraud_detection.proto
-        │   │   fraud_detection_pb2.py
-        │   │   fraud_detection_pb2.pyi
-        │   │   fraud_detection_pb2_grpc.py
-        │   │   __init__.py
-        │   │
-        │   └───__pycache__
-        │           fraud_detection_pb2.cpython-311.pyc
-        │           fraud_detection_pb2_grpc.cpython-311.pyc
-        │           __init__.cpython-311.pyc
-        │
-        ├───suggestions
-        │   │   suggestions.proto
-        │   │   suggestions_pb2.py
-        │   │   suggestions_pb2.pyi
-        │   │   suggestions_pb2_grpc.py
-        │   │   __init__.py
-        │   │
-        │   └───__pycache__
-        │           suggestions_pb2.cpython-311.pyc
-        │           suggestions_pb2_grpc.cpython-311.pyc
-        │           __init__.cpython-311.pyc
-        │
-        └───transaction_verification
-            │   transaction_verification.proto
-            │   transaction_verification_pb2.py
-            │   transaction_verification_pb2.pyi
-            │   transaction_verification_pb2_grpc.py
-            │   __init__.py
-            │
-            └───__pycache__
-                    transaction_verification_pb2.cpython-311.pyc
-                    transaction_verification_pb2_grpc.cpython-311.pyc
-                    __init__.cpython-311.pyc
+    └── pb/
+        ├── __init__.py
+        ├── executor/
+        │   ├── executor.proto
+        │   ├── executor_pb2.py
+        │   ├── executor_pb2.pyi
+        │   ├── executor_pb2_grpc.py
+        │   └── __pycache__/
+        ├── fraud_detection/
+        │   ├── fraud_detection.proto
+        │   ├── fraud_detection_pb2.py
+        │   ├── fraud_detection_pb2.pyi
+        │   ├── fraud_detection_pb2_grpc.py
+        │   ├── __init__.py
+        │   └── __pycache__/
+        ├── order_queue/
+        │   ├── order_queue.proto
+        │   ├── order_queue_pb2.py
+        │   ├── order_queue_pb2.pyi
+        │   ├── order_queue_pb2_grpc.py
+        │   └── __pycache__/
+        ├── suggestions/
+        │   ├── suggestions.proto
+        │   ├── suggestions_pb2.py
+        │   ├── suggestions_pb2.pyi
+        │   ├── suggestions_pb2_grpc.py
+        │   ├── __init__.py
+        │   └── __pycache__/
+        └── transaction_verification/
+            ├── transaction_verification.proto
+            ├── transaction_verification_pb2.py
+            ├── transaction_verification_pb2.pyi
+            ├── transaction_verification_pb2_grpc.py
+            ├── __init__.py
+            └── __pycache__/
