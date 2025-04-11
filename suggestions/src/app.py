@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from utils.pb.suggestions import suggestions_pb2 as suggestions
 from utils.pb.suggestions import suggestions_pb2_grpc as suggestions_grpc
-from vector_clock import VectorClock
+from utils.vector_clock import VectorClock
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

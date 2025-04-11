@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from utils.pb.fraud_detection import fraud_detection_pb2 as fraud
 from utils.pb.fraud_detection import fraud_detection_pb2_grpc as fraud_grpc
-from vector_clock import VectorClock
+from utils.vector_clock import VectorClock
 
 # ✅ Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

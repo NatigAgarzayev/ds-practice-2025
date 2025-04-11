@@ -8,6 +8,7 @@ We have 3 microservices. They are Fraud Detection system, Transaction Verificati
 We used proto schemas for estbalishing DB prototype.    
 
 We have added 2 more services: executor and order_queue. We have implemented vectors clocks, queue, executors and leader elections.
+Now it prioritize premium users over non-premium users. 
 
 ## Installation
 In order to launch launch your docker desktop, then move to the project directory:

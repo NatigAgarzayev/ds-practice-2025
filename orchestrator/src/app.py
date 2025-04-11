@@ -8,7 +8,6 @@ import grpc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# ✅ Add project and utils paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../utils")))
 
@@ -22,7 +21,7 @@ from utils.pb.suggestions import suggestions_pb2_grpc as sugg_grpc
 from utils.pb.order_queue import order_queue_pb2 as queue_pb2
 from utils.pb.order_queue import order_queue_pb2_grpc as queue_grpc
 
-from vector_clock import VectorClock
+from utils.vector_clock import VectorClock
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
