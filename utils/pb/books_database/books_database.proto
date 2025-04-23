@@ -3,10 +3,20 @@ syntax = "proto3";
 package books_database;
 
 service BooksDatabase {
+  // Original operations
   rpc Read (ReadRequest) returns (ReadResponse);
   rpc Write (WriteRequest) returns (WriteResponse);
+  
+  // New enhanced operations
+  rpc IncrementStock (IncrementRequest) returns (StockOperationResponse);
+  rpc DecrementStock (DecrementRequest) returns (StockOperationResponse);
+  rpc CompareAndSwap (CompareAndSwapRequest) returns (StockOperationResponse);
+  rpc BulkRead (BulkReadRequest) returns (BulkReadResponse);
+  rpc SearchBooks (SearchRequest) returns (SearchResponse);
+  rpc GetStockMetrics (MetricsRequest) returns (MetricsResponse);
 }
 
+// Original messages
 message ReadRequest {
   string title = 1;
 }
@@ -27,12 +37,84 @@ message WriteResponse {
   string message = 2;
 }
 
-// For inter-replica communication
+// New messages for enhanced operations
+message IncrementRequest {
+  string title = 1;
+  int32 amount = 2;  // Amount to increment by
+}
+
+message DecrementRequest {
+  string title = 1;
+  int32 amount = 2;  // Amount to decrement by
+  bool fail_if_insufficient = 3;  // Whether to fail if stock would become negative
+}
+
+message StockOperationResponse {
+  bool success = 1;
+  string message = 2;
+  int32 new_stock = 3;  // New stock value after operation
+  int32 old_stock = 4;  // Previous stock value before operation
+}
+
+message CompareAndSwapRequest {
+  string title = 1;
+  int32 expected_stock = 2;  // Only update if current stock equals this value
+  int32 new_stock = 3;       // New stock value to set if condition matches
+}
+
+message BulkReadRequest {
+  repeated string titles = 1;  // List of book titles to read
+}
+
+message BulkReadResponse {
+  bool success = 1;
+  string message = 2;
+  map<string, int32> stocks = 3;  // Map of title -> stock value
+}
+
+message SearchRequest {
+  string query = 1;  // Search query (partial title match)
+  int32 min_stock = 2;  // Only return books with at least this stock (0 for no minimum)
+  int32 max_results = 3;  // Maximum number of results to return (0 for no limit)
+}
+
+message SearchResponse {
+  bool success = 1;
+  string message = 2;
+  repeated BookInfo results = 3;  // Search results
+}
+
+message BookInfo {
+  string title = 1;
+  int32 stock = 2;
+}
+
+message MetricsRequest {
+  bool include_zero_stock = 1;  // Whether to include books with zero stock
+}
+
+message MetricsResponse {
+  bool success = 1;
+  string message = 2;
+  int32 total_books = 3;  // Total number of book titles
+  int32 total_stock = 4;  // Total stock across all books
+  int32 average_stock = 5;  // Average stock per book
+  int32 min_stock = 6;  // Book with lowest stock
+  int32 max_stock = 7;  // Book with highest stock
+  string most_stocked_title = 8;  // Title with highest stock
+  string least_stocked_title = 9;  // Title with lowest stock (excluding zero if specified)
+}
+
+// Inter-replica communication
 service ReplicaSync {
   rpc SyncWrite (SyncWriteRequest) returns (SyncWriteResponse);
+  rpc SyncIncrement (SyncIncrementRequest) returns (SyncWriteResponse);
+  rpc SyncDecrement (SyncDecrementRequest) returns (SyncWriteResponse);
+  rpc SyncCompareAndSwap (SyncCompareAndSwapRequest) returns (SyncWriteResponse);
   rpc GetStatus (StatusRequest) returns (StatusResponse);
 }
 
+// Original sync messages
 message SyncWriteRequest {
   string title = 1;
   int32 new_stock = 2;
@@ -48,4 +130,25 @@ message StatusRequest {}
 
 message StatusResponse {
   bool is_alive = 1;
+}
+
+// New sync messages for enhanced operations
+message SyncIncrementRequest {
+  string title = 1;
+  int32 amount = 2;
+  int64 timestamp = 3;
+}
+
+message SyncDecrementRequest {
+  string title = 1;
+  int32 amount = 2;
+  bool fail_if_insufficient = 3;
+  int64 timestamp = 4;
+}
+
+message SyncCompareAndSwapRequest {
+  string title = 1;
+  int32 expected_stock = 2;
+  int32 new_stock = 3;
+  int64 timestamp = 4;
 }

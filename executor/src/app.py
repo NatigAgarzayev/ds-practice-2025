@@ -122,30 +122,50 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         logger.info(f"[{self.executor_id}] Executing order for {quantity} copies of '{title}'")
         
         try:
-            # Step 1: Read current stock
-            response = db_stub.Read(books_database_pb2.ReadRequest(title=title))
-            current_stock = response.stock
-            logger.info(f"[{self.executor_id}] Current stock of '{title}': {current_stock}")
+            # Use DecrementStock operation which handles atomicity and validation in one call
+            response = db_stub.DecrementStock(books_database_pb2.DecrementRequest(
+                title=title,
+                amount=quantity,
+                fail_if_insufficient=True  # Don't allow negative stock
+            ))
             
-            # Step 2: Check stock availability
-            if current_stock >= quantity:
-                # Step 3: Write updated stock back to the database
-                new_stock = current_stock - quantity
-                write_response = db_stub.Write(books_database_pb2.WriteRequest(
-                    title=title,
-                    new_stock=new_stock
-                ))
-                
-                logger.info(f"[{self.executor_id}] Updated stock of '{title}' to {new_stock}")
-                return write_response.success
+            if response.success:
+                logger.info(f"[{self.executor_id}] ✅ Successfully decremented stock of '{title}' "
+                            f"from {response.old_stock} to {response.new_stock}")
+                return True
             else:
-                logger.warning(f"[{self.executor_id}] Not enough stock for '{title}'. " 
-                               f"Required: {quantity}, Available: {current_stock}")
+                logger.warning(f"[{self.executor_id}] ⚠️ Could not decrement stock: {response.message}")
                 return False
-        
+                
         except Exception as e:
-            logger.error(f"[{self.executor_id}] Error executing order: {str(e)}")
-            return False
+            logger.error(f"[{self.executor_id}] ❌ Error executing order: {str(e)}")
+            
+            # Fallback to the original read-then-write pattern if the enhanced operation fails
+            logger.warning(f"[{self.executor_id}] Falling back to regular Read/Write operations")
+            try:
+                # Step 1: Read current stock
+                read_response = db_stub.Read(books_database_pb2.ReadRequest(title=title))
+                current_stock = read_response.stock
+                
+                # Step 2: Check stock availability
+                if current_stock >= quantity:
+                    # Step 3: Write updated stock back to the database
+                    new_stock = current_stock - quantity
+                    write_response = db_stub.Write(books_database_pb2.WriteRequest(
+                        title=title,
+                        new_stock=new_stock
+                    ))
+                    
+                    logger.info(f"[{self.executor_id}] Updated stock of '{title}' to {new_stock}")
+                    return write_response.success
+                else:
+                    logger.warning(f"[{self.executor_id}] Not enough stock for '{title}'. " 
+                                f"Required: {quantity}, Available: {current_stock}")
+                    return False
+                    
+            except Exception as e2:
+                logger.error(f"[{self.executor_id}] Error in fallback execution: {str(e2)}")
+                return False
 
 def serve():
     executor_id = os.environ["EXECUTOR_ID"]

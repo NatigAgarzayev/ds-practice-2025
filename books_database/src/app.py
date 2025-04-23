@@ -418,6 +418,539 @@ class ChainReplicationReplica(books_database_pb2_grpc.BooksDatabaseServicer,
         """
         return books_database_pb2.StatusResponse(is_alive=True)
 
+    # Add these new methods to the BooksDatabaseReplica class
+    def IncrementStock(self, request, context):
+        """
+        Atomically increment a book's stock by the specified amount.
+        
+        Args:
+            request: IncrementRequest with book title and increment amount
+            context: gRPC context
+            
+        Returns:
+            StockOperationResponse with success status and new stock value
+        """
+        title = request.title
+        amount = request.amount
+        
+        logger.info(f"[{self.replica_id}] ➕ Increment stock request for book: {title}, amount: {amount}")
+        
+        with self.lock:
+            # Get current stock or initialize to 0 if book doesn't exist
+            old_stock = self.data.get(title, 0)
+            new_stock = old_stock + amount
+            
+            # Update data
+            self.data[title] = new_stock
+            
+            # Update timestamp
+            timestamp = int(time.time() * 1000)
+            self.write_timestamps[title] = timestamp
+            
+            # Sync with other replicas
+            sync_success = self._sync_increment_to_replicas(title, amount, timestamp)
+            
+            return books_database_pb2.StockOperationResponse(
+                success=True,
+                message=f"Stock incremented by {amount}" + 
+                        ("" if sync_success else " (sync incomplete)"),
+                new_stock=new_stock,
+                old_stock=old_stock
+            )
+            
+    def DecrementStock(self, request, context):
+        """
+        Atomically decrement a book's stock by the specified amount.
+        
+        Args:
+            request: DecrementRequest with book title, decrement amount, and behavior flag
+            context: gRPC context
+            
+        Returns:
+            StockOperationResponse with success status and new stock value
+        """
+        title = request.title
+        amount = request.amount
+        fail_if_insufficient = request.fail_if_insufficient
+        
+        logger.info(f"[{self.replica_id}] ➖ Decrement stock request for book: {title}, amount: {amount}")
+        
+        with self.lock:
+            # Get current stock or initialize to 0 if book doesn't exist
+            old_stock = self.data.get(title, 0)
+            new_stock = old_stock - amount
+            
+            # Check if this would make stock negative
+            if new_stock < 0 and fail_if_insufficient:
+                return books_database_pb2.StockOperationResponse(
+                    success=False,
+                    message=f"Insufficient stock: have {old_stock}, requested {amount}",
+                    new_stock=old_stock,
+                    old_stock=old_stock
+                )
+                
+            # Update data
+            self.data[title] = new_stock
+            
+            # Update timestamp
+            timestamp = int(time.time() * 1000)
+            self.write_timestamps[title] = timestamp
+            
+            # Sync with other replicas
+            sync_success = self._sync_decrement_to_replicas(title, amount, fail_if_insufficient, timestamp)
+            
+            return books_database_pb2.StockOperationResponse(
+                success=True,
+                message=f"Stock decremented by {amount}" + 
+                        ("" if sync_success else " (sync incomplete)"),
+                new_stock=new_stock,
+                old_stock=old_stock
+            )
+            
+    def CompareAndSwap(self, request, context):
+        """
+        Perform an atomic compare-and-swap operation on a book's stock.
+        
+        Args:
+            request: CompareAndSwapRequest with book title, expected stock, and new stock
+            context: gRPC context
+            
+        Returns:
+            StockOperationResponse with success status and new stock value
+        """
+        title = request.title
+        expected_stock = request.expected_stock
+        new_stock = request.new_stock
+        
+        logger.info(f"[{self.replica_id}] 🔄 Compare-and-swap request for book: {title}, "
+                f"expected: {expected_stock}, new: {new_stock}")
+        
+        with self.lock:
+            # Get current stock
+            current_stock = self.data.get(title, 0)
+            
+            # Check if current stock matches expected value
+            if current_stock != expected_stock:
+                return books_database_pb2.StockOperationResponse(
+                    success=False,
+                    message=f"Current stock ({current_stock}) does not match expected ({expected_stock})",
+                    new_stock=current_stock,
+                    old_stock=current_stock
+                )
+                
+            # Update data
+            self.data[title] = new_stock
+            
+            # Update timestamp
+            timestamp = int(time.time() * 1000)
+            self.write_timestamps[title] = timestamp
+            
+            # Sync with other replicas
+            sync_success = self._sync_cas_to_replicas(title, expected_stock, new_stock, timestamp)
+            
+            return books_database_pb2.StockOperationResponse(
+                success=True,
+                message=f"Stock updated from {expected_stock} to {new_stock}" + 
+                        ("" if sync_success else " (sync incomplete)"),
+                new_stock=new_stock,
+                old_stock=expected_stock
+            )
+            
+    def BulkRead(self, request, context):
+        """
+        Read multiple book stocks in a single operation.
+        
+        Args:
+            request: BulkReadRequest with list of book titles
+            context: gRPC context
+            
+        Returns:
+            BulkReadResponse with stock values for each book
+        """
+        titles = request.titles
+        logger.info(f"[{self.replica_id}] 📚 Bulk read request for {len(titles)} books")
+        
+        with self.lock:
+            result = {}
+            for title in titles:
+                result[title] = self.data.get(title, 0)
+                
+            return books_database_pb2.BulkReadResponse(
+                success=True,
+                message=f"Read {len(titles)} books",
+                stocks=result
+            )
+            
+    def SearchBooks(self, request, context):
+        """
+        Search for books by partial title match, filtered by minimum stock.
+        
+        Args:
+            request: SearchRequest with search query and filters
+            context: gRPC context
+            
+        Returns:
+            SearchResponse with matching book information
+        """
+        query = request.query.lower()
+        min_stock = request.min_stock
+        max_results = request.max_results if request.max_results > 0 else float('inf')
+        
+        logger.info(f"[{self.replica_id}] 🔍 Search request: '{query}', min stock: {min_stock}, max results: {max_results}")
+        
+        with self.lock:
+            results = []
+            for title, stock in self.data.items():
+                if (query in title.lower() and stock >= min_stock):
+                    results.append(books_database_pb2.BookInfo(
+                        title=title,
+                        stock=stock
+                    ))
+                    
+                    if len(results) >= max_results:
+                        break
+                        
+            return books_database_pb2.SearchResponse(
+                success=True,
+                message=f"Found {len(results)} matching books",
+                results=results
+            )
+            
+    def GetStockMetrics(self, request, context):
+        """
+        Calculate and return metrics about the current book inventory.
+        
+        Args:
+            request: MetricsRequest with filtering options
+            context: gRPC context
+            
+        Returns:
+            MetricsResponse with various stock metrics
+        """
+        include_zero_stock = request.include_zero_stock
+        
+        logger.info(f"[{self.replica_id}] 📊 Stock metrics request (include zero stock: {include_zero_stock})")
+        
+        with self.lock:
+            # Filter books based on include_zero_stock
+            books_to_consider = self.data.items()
+            if not include_zero_stock:
+                books_to_consider = [(title, stock) for title, stock in books_to_consider if stock > 0]
+                
+            if not books_to_consider:
+                return books_database_pb2.MetricsResponse(
+                    success=True,
+                    message="No books available for metrics calculation",
+                    total_books=0,
+                    total_stock=0,
+                    average_stock=0,
+                    min_stock=0,
+                    max_stock=0,
+                    most_stocked_title="",
+                    least_stocked_title=""
+                )
+                
+            # Calculate metrics
+            total_books = len(books_to_consider)
+            total_stock = sum(stock for _, stock in books_to_consider)
+            average_stock = total_stock // total_books if total_books > 0 else 0
+            
+            # Find min/max stock and corresponding titles
+            min_stock_item = min(books_to_consider, key=lambda x: x[1])
+            max_stock_item = max(books_to_consider, key=lambda x: x[1])
+            min_stock = min_stock_item[1]
+            max_stock = max_stock_item[1]
+            least_stocked_title = min_stock_item[0]
+            most_stocked_title = max_stock_item[0]
+            
+            return books_database_pb2.MetricsResponse(
+                success=True,
+                message="Metrics calculated successfully",
+                total_books=total_books,
+                total_stock=total_stock,
+                average_stock=average_stock,
+                min_stock=min_stock,
+                max_stock=max_stock,
+                most_stocked_title=most_stocked_title,
+                least_stocked_title=least_stocked_title
+            )
+
+    # Synchronization methods for new operations
+
+    def _sync_increment_to_replicas(self, title, amount, timestamp):
+        """
+        Propagate an increment operation to all other replicas.
+        
+        Args:
+            title: Book title (the key)
+            amount: Amount to increment by
+            timestamp: Timestamp of the operation
+            
+        Returns:
+            bool: True if sync was successful with majority of replicas
+        """
+        successful_syncs = 0
+        total_replicas = len(self.replica_stubs)
+        
+        # Phase 1: Check if all replicas are available
+        available_replicas = {}
+        for replica_id, stub in self.replica_stubs.items():
+            try:
+                response = stub.GetStatus(books_database_pb2.StatusRequest())
+                if response.is_alive:
+                    available_replicas[replica_id] = stub
+                    logger.debug(f"[{self.replica_id}] Replica {replica_id} is available for sync")
+            except Exception as e:
+                logger.warning(f"[{self.replica_id}] Replica {replica_id} is not available: {str(e)}")
+                
+        # Phase 2: If majority of replicas are available, proceed with sync
+        if len(available_replicas) >= (total_replicas // 2):
+            for replica_id, stub in available_replicas.items():
+                try:
+                    sync_request = books_database_pb2.SyncIncrementRequest(
+                        title=title,
+                        amount=amount,
+                        timestamp=timestamp
+                    )
+                    response = stub.SyncIncrement(sync_request)
+                    if response.success:
+                        successful_syncs += 1
+                        logger.debug(f"[{self.replica_id}] Successfully synced increment to {replica_id}")
+                    else:
+                        logger.warning(f"[{self.replica_id}] Failed to sync increment to {replica_id}: {response.message}")
+                except Exception as e:
+                    logger.error(f"[{self.replica_id}] Error syncing increment to {replica_id}: {str(e)}")
+            
+            logger.info(f"[{self.replica_id}] Increment sync completed: {successful_syncs}/{len(available_replicas)} successful")
+            return successful_syncs >= (len(available_replicas) // 2)  # Success if majority synced
+        else:
+            logger.warning(f"[{self.replica_id}] Not enough replicas available for sync")
+            return False
+
+    def _sync_decrement_to_replicas(self, title, amount, fail_if_insufficient, timestamp):
+        """
+        Propagate a decrement operation to all other replicas.
+        
+        Args:
+            title: Book title (the key)
+            amount: Amount to decrement by
+            fail_if_insufficient: Whether to fail if stock would become negative
+            timestamp: Timestamp of the operation
+            
+        Returns:
+            bool: True if sync was successful with majority of replicas
+        """
+        successful_syncs = 0
+        total_replicas = len(self.replica_stubs)
+        
+        # Phase 1: Check if all replicas are available
+        available_replicas = {}
+        for replica_id, stub in self.replica_stubs.items():
+            try:
+                response = stub.GetStatus(books_database_pb2.StatusRequest())
+                if response.is_alive:
+                    available_replicas[replica_id] = stub
+                    logger.debug(f"[{self.replica_id}] Replica {replica_id} is available for sync")
+            except Exception as e:
+                logger.warning(f"[{self.replica_id}] Replica {replica_id} is not available: {str(e)}")
+                
+        # Phase 2: If majority of replicas are available, proceed with sync
+        if len(available_replicas) >= (total_replicas // 2):
+            for replica_id, stub in available_replicas.items():
+                try:
+                    sync_request = books_database_pb2.SyncDecrementRequest(
+                        title=title,
+                        amount=amount,
+                        fail_if_insufficient=fail_if_insufficient,
+                        timestamp=timestamp
+                    )
+                    response = stub.SyncDecrement(sync_request)
+                    if response.success:
+                        successful_syncs += 1
+                        logger.debug(f"[{self.replica_id}] Successfully synced decrement to {replica_id}")
+                    else:
+                        logger.warning(f"[{self.replica_id}] Failed to sync decrement to {replica_id}: {response.message}")
+                except Exception as e:
+                    logger.error(f"[{self.replica_id}] Error syncing decrement to {replica_id}: {str(e)}")
+            
+            logger.info(f"[{self.replica_id}] Decrement sync completed: {successful_syncs}/{len(available_replicas)} successful")
+            return successful_syncs >= (len(available_replicas) // 2)  # Success if majority synced
+        else:
+            logger.warning(f"[{self.replica_id}] Not enough replicas available for sync")
+            return False
+
+    def _sync_cas_to_replicas(self, title, expected_stock, new_stock, timestamp):
+        """
+        Propagate a compare-and-swap operation to all other replicas.
+        
+        Args:
+            title: Book title (the key)
+            expected_stock: Expected current stock value
+            new_stock: New stock value to set
+            timestamp: Timestamp of the operation
+            
+        Returns:
+            bool: True if sync was successful with majority of replicas
+        """
+        successful_syncs = 0
+        total_replicas = len(self.replica_stubs)
+        
+        # Phase 1: Check if all replicas are available
+        available_replicas = {}
+        for replica_id, stub in self.replica_stubs.items():
+            try:
+                response = stub.GetStatus(books_database_pb2.StatusRequest())
+                if response.is_alive:
+                    available_replicas[replica_id] = stub
+                    logger.debug(f"[{self.replica_id}] Replica {replica_id} is available for sync")
+            except Exception as e:
+                logger.warning(f"[{self.replica_id}] Replica {replica_id} is not available: {str(e)}")
+                
+        # Phase 2: If majority of replicas are available, proceed with sync
+        if len(available_replicas) >= (total_replicas // 2):
+            for replica_id, stub in available_replicas.items():
+                try:
+                    sync_request = books_database_pb2.SyncCompareAndSwapRequest(
+                        title=title,
+                        expected_stock=expected_stock,
+                        new_stock=new_stock,
+                        timestamp=timestamp
+                    )
+                    response = stub.SyncCompareAndSwap(sync_request)
+                    if response.success:
+                        successful_syncs += 1
+                        logger.debug(f"[{self.replica_id}] Successfully synced CAS to {replica_id}")
+                    else:
+                        logger.warning(f"[{self.replica_id}] Failed to sync CAS to {replica_id}: {response.message}")
+                except Exception as e:
+                    logger.error(f"[{self.replica_id}] Error syncing CAS to {replica_id}: {str(e)}")
+            
+            logger.info(f"[{self.replica_id}] CAS sync completed: {successful_syncs}/{len(available_replicas)} successful")
+            return successful_syncs >= (len(available_replicas) // 2)  # Success if majority synced
+        else:
+            logger.warning(f"[{self.replica_id}] Not enough replicas available for sync")
+            return False
+
+    # Add these sync handlers to the ReplicaSyncServicer part
+
+    def SyncIncrement(self, request, context):
+        """
+        Handle a synchronization increment request from another replica.
+        
+        Args:
+            request: SyncIncrementRequest with book title, amount, and timestamp
+            context: gRPC context
+            
+        Returns:
+            SyncWriteResponse indicating success or failure
+        """
+        title = request.title
+        amount = request.amount
+        timestamp = request.timestamp
+        
+        logger.info(f"[{self.replica_id}] 🔄 Sync increment request from another replica for book: {title}")
+        
+        with self.lock:
+            current_timestamp = self.write_timestamps.get(title, 0)
+            
+            # Apply write if it has a newer or equal timestamp
+            if timestamp >= current_timestamp:
+                current_stock = self.data.get(title, 0)
+                self.data[title] = current_stock + amount
+                self.write_timestamps[title] = timestamp
+                return books_database_pb2.SyncWriteResponse(
+                    success=True,
+                    message="Sync increment applied successfully"
+                )
+            else:
+                return books_database_pb2.SyncWriteResponse(
+                    success=False,
+                    message=f"Stale increment operation (timestamp: {timestamp}, current: {current_timestamp})"
+                )
+
+    def SyncDecrement(self, request, context):
+        """
+        Handle a synchronization decrement request from another replica.
+        
+        Args:
+            request: SyncDecrementRequest with book title, amount, fail flag and timestamp
+            context: gRPC context
+            
+        Returns:
+            SyncWriteResponse indicating success or failure
+        """
+        title = request.title
+        amount = request.amount
+        fail_if_insufficient = request.fail_if_insufficient
+        timestamp = request.timestamp
+        
+        logger.info(f"[{self.replica_id}] 🔄 Sync decrement request from another replica for book: {title}")
+        
+        with self.lock:
+            current_timestamp = self.write_timestamps.get(title, 0)
+            
+            # Apply write if it has a newer or equal timestamp
+            if timestamp >= current_timestamp:
+                current_stock = self.data.get(title, 0)
+                new_stock = current_stock - amount
+                
+                if new_stock < 0 and fail_if_insufficient:
+                    return books_database_pb2.SyncWriteResponse(
+                        success=False,
+                        message=f"Insufficient stock: {current_stock} < {amount}"
+                    )
+                    
+                self.data[title] = new_stock
+                self.write_timestamps[title] = timestamp
+                return books_database_pb2.SyncWriteResponse(
+                    success=True,
+                    message="Sync decrement applied successfully"
+                )
+            else:
+                return books_database_pb2.SyncWriteResponse(
+                    success=False,
+                    message=f"Stale decrement operation (timestamp: {timestamp}, current: {current_timestamp})"
+                )
+
+    def SyncCompareAndSwap(self, request, context):
+        """
+        Handle a synchronization compare-and-swap request from another replica.
+        
+        Args:
+            request: SyncCompareAndSwapRequest with book title, expected stock, new stock, and timestamp
+            context: gRPC context
+            
+        Returns:
+            SyncWriteResponse indicating success or failure
+        """
+        title = request.title
+        expected_stock = request.expected_stock
+        new_stock = request.new_stock
+        timestamp = request.timestamp
+        
+        logger.info(f"[{self.replica_id}] 🔄 Sync CAS request from another replica for book: {title}")
+        
+        with self.lock:
+            current_timestamp = self.write_timestamps.get(title, 0)
+            
+            # Apply write if it has a newer or equal timestamp
+            if timestamp >= current_timestamp:
+                current_stock = self.data.get(title, 0)
+                
+                # For CAS sync, we trust the initiating replica's decision
+                # If they decided the CAS should succeed, we apply it directly
+                self.data[title] = new_stock
+                self.write_timestamps[title] = timestamp
+                
+                return books_database_pb2.SyncWriteResponse(
+                    success=True,
+                    message="Sync CAS applied successfully"
+                )
+            else:
+                return books_database_pb2.SyncWriteResponse(
+                    success=False,
+                    message=f"Stale CAS operation (timestamp: {timestamp}, current: {current_timestamp})"
+                )
 
 def serve():
     """Start the gRPC server"""
