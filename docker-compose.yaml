@@ -126,3 +126,51 @@ services:
     volumes:
       - ./executor/src:/app/executor/src
       - ./utils:/app/utils
+   # Database replicas
+  books_db1:
+    build:
+      context: ./
+      dockerfile: ./books_database/Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - REPLICA_ID=books_db1
+      - KNOWN_REPLICAS=books_db1,books_db2,books_db3
+    volumes:
+      - ./utils:/app/utils
+      - ./books_database/src:/app/books_database/src
+  books_db2:
+    build:
+      context: ./
+      dockerfile: ./books_database/Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - REPLICA_ID=books_db2
+      - KNOWN_REPLICAS=books_db1,books_db2,books_db3
+    volumes:
+      - ./utils:/app/utils
+      - ./books_database/src:/app/books_database/src
+  books_db3:
+    build:
+      context: ./
+      dockerfile: ./books_database/Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - REPLICA_ID=books_db3
+      - KNOWN_REPLICAS=books_db1,books_db2,books_db3
+    volumes:
+      - ./utils:/app/utils
+      - ./books_database/src:/app/books_database/src
+  books_database_balancer:
+    build:
+      context: ./
+      dockerfile: ./books_database_balancer/Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - REPLICA_ADDRESSES=books_db1:50056,books_db2:50056,books_db3:50056
+    volumes:
+      - ./utils:/app/utils
+      - ./books_database_balancer/src:/app/books_database_balancer/src
+    depends_on:
+      - books_db1
+      - books_db2
+      - books_db3

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package books_database;
+
+service BooksDatabase {
+  rpc Read (ReadRequest) returns (ReadResponse);
+  rpc Write (WriteRequest) returns (WriteResponse);
+}
+
+message ReadRequest {
+  string title = 1;
+}
+
+message ReadResponse {
+  int32 stock = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message WriteRequest {
+  string title = 1;
+  int32 new_stock = 2;
+}
+
+message WriteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// For inter-replica communication
+service ReplicaSync {
+  rpc SyncWrite (SyncWriteRequest) returns (SyncWriteResponse);
+  rpc GetStatus (StatusRequest) returns (StatusResponse);
+}
+
+message SyncWriteRequest {
+  string title = 1;
+  int32 new_stock = 2;
+  int64 timestamp = 3;
+}
+
+message SyncWriteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message StatusRequest {}
+
+message StatusResponse {
+  bool is_alive = 1;
+}
