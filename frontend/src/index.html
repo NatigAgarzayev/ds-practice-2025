@@ -99,8 +99,8 @@
                 quantity: Math.floor(Math.random() * 3) + 1  // Quantity 1 to 3
             }));
         }
-    
         const items = getRandomBooks();
+        console.log("BOOKS: ", items)
     
         const itemListElement = document.getElementById('itemList');
         items.forEach(item => {

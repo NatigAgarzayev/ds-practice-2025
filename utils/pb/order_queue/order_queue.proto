@@ -3,24 +3,30 @@ package utils.pb.order_queue;
 
 service OrderQueue {
   rpc Enqueue(OrderRequest) returns (QueueAck);
-  rpc Dequeue(Empty) returns (OrderResponse);
+  rpc Dequeue(Empty)        returns (OrderResponse);
+}
+
+message Item {
+  string title    = 1;
+  int32  quantity = 2;
 }
 
 message OrderRequest {
-  string order_id = 1;
-  int32 num_items = 2;
-  bool is_premium = 3;
-  string shipping_method = 4;
+  string        order_id        = 1;
+  bool          is_premium      = 2;
+  string        shipping_method = 3;
+  repeated Item items           = 4;
 }
 
 message QueueAck {
-  bool success = 1;
+  bool   success = 1;
   string message = 2;
 }
 
 message Empty {}
 
 message OrderResponse {
-  string order_id = 1;
-  bool has_order = 2;
+  string        order_id = 1;
+  bool          has_order = 2;
+  repeated Item items     = 3;
 }

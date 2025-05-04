@@ -126,3 +126,29 @@ services:
     volumes:
       - ./executor/src:/app/executor/src
       - ./utils:/app/utils
+  books_db1: &books_db_common
+    build:
+      context: .
+      dockerfile: ./books_database/Dockerfile
+    ports:
+      - "60060:50060"
+    environment:
+      - DB_ID=books_db1
+      - KNOWN_DBS=books_db1,books_db2,books_db3
+    volumes:
+      - ./utils:/app/utils
+      - ./books_database/src:/app/books_database/src
+  books_db2:
+    <<: *books_db_common
+    ports:
+      - "60061:50060"
+    environment:
+      - DB_ID=books_db2
+      - KNOWN_DBS=books_db1,books_db2,books_db3
+  books_db3:
+    <<: *books_db_common
+    ports:
+      - "60062:50060"
+    environment:
+      - DB_ID=books_db3
+      - KNOWN_DBS=books_db1,books_db2,books_db3
