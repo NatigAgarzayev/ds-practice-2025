@@ -152,3 +152,14 @@ services:
     environment:
       - DB_ID=books_db3
       - KNOWN_DBS=books_db1,books_db2,books_db3
+  payment:
+    build:
+      context: .
+      dockerfile: ./payment/Dockerfile
+    ports:
+      - "50061:50061"
+    environment:
+      - PAYMENT_PORT=50061
+    volumes:
+      - ./utils:/app/utils
+      - ./payment/src:/app/payment/src

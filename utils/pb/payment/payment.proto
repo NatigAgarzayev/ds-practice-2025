@@ -1,0 +1,33 @@
+syntax = "proto3";
+package utils.pb.payment;
+
+service PaymentService {
+  // Phase 1: prepare the transaction
+  rpc Prepare (PrepareRequest)  returns (PrepareResponse);
+  // Phase 2: commit if all prepared
+  rpc Commit  (CommitRequest)  returns (CommitResponse);
+  // Abort if any fail
+  rpc Abort   (AbortRequest)   returns (AbortResponse);
+}
+
+message PrepareRequest {
+  string order_id = 1;
+  string payload  = 2;  // e.g. payment details JSON
+}
+message PrepareResponse {
+  bool ready = 1;
+}
+
+message CommitRequest {
+  string order_id = 1;
+}
+message CommitResponse {
+  bool success = 1;
+}
+
+message AbortRequest {
+  string order_id = 1;
+}
+message AbortResponse {
+  bool aborted = 1;
+}

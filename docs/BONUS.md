@@ -1,4 +1,4 @@
-## Session 10 bonus.
+## Session 11 bonus.
 ### Quesiton:
 What about failure of the coordinator? Analyse the system and try to understand what are the consequences of a failing coordinator, during the execution of the commitment protocol. Think of a solution for this issue. No implementation is needed, but the points will only be awarded upon good analysis, justification, and solution.
 

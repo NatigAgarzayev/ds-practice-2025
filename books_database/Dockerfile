@@ -1,5 +1,14 @@
-FROM python:3.11
+FROM python:3.11-slim
 WORKDIR /app
-COPY ./books_database/requirements.txt .
+
+# Copy requirements and install
+COPY books_database/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
-CMD python utils/other/hotreload.py "books_database/src/app.py"
+
+# Copy the entire src folder (including initial_stock.json!)
+COPY books_database/src /app/books_database/src
+
+# Also copy utils for your vector_clock & pb stubs
+COPY utils /app/utils
+
+CMD ["python", "books_database/src/app.py"]

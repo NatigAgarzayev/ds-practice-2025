@@ -2,18 +2,18 @@ syntax = "proto3";
 package utils.pb.books_database;
 
 service BooksDatabase {
-  // client‐visible operations
-  rpc Read   (ReadRequest)  returns (ReadResponse);
-  rpc Write  (WriteRequest) returns (WriteResponse);
+  rpc Read       (ReadRequest)       returns (ReadResponse);
+  rpc Write      (WriteRequest)      returns (WriteResponse);
 
-  // internal replication
-  rpc Replicate (ReplicateRequest) returns (ReplicateAck);
+  // 2PC participant RPCs
+  rpc Prepare    (PrepareRequest)    returns (PrepareResponse);
+  rpc Commit     (CommitRequest)     returns (CommitResponse);
+  rpc Abort      (AbortRequest)      returns (AbortResponse);
 }
 
 message ReadRequest {
   string title = 1;
 }
-
 message ReadResponse {
   int32 stock = 1;
 }
@@ -22,17 +22,32 @@ message WriteRequest {
   string title     = 1;
   int32  new_stock = 2;
 }
-
 message WriteResponse {
   bool success = 1;
 }
 
-message ReplicateRequest {
-  string title     = 1;
-  int32  new_stock = 2;
-  string clock     = 3; // JSON‐encoded vector clock
+// -- 2PC messages --
+
+message PrepareRequest {
+  string order_id  = 1;
+  string title     = 2;
+  int32  new_stock = 3;
+}
+message PrepareResponse {
+  bool ready = 1;
 }
 
-message ReplicateAck {
+message CommitRequest {
+  string order_id = 1;
+  string title    = 2;
+}
+message CommitResponse {
   bool success = 1;
+}
+
+message AbortRequest {
+  string order_id = 1;
+}
+message AbortResponse {
+  bool aborted = 1;
 }

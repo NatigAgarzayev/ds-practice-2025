@@ -1,3 +1,5 @@
+# orchestrator/src/app.py
+
 import os
 import sys
 import json
@@ -8,7 +10,7 @@ import grpc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# Fix import paths so we can load utils and generated pb files
+# Fix import paths so we can load utils & generated pb packages
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "utils"))
@@ -38,13 +40,16 @@ from utils.pb.books_database import (
 from utils.vector_clock import VectorClock
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("orchestrator")
 
 app = Flask(__name__)
 CORS(app)
 
-SERVICES = ["orchestrator", "transaction_verification", "fraud_detection", "suggestions"]
+SERVICES = ["orchestrator", "transaction_verification",
+            "fraud_detection", "suggestions"]
+
 
 def broadcast_clear_order(order_id, final_clock):
     clock_json = json.dumps(final_clock.to_dict())
@@ -54,21 +59,24 @@ def broadcast_clear_order(order_id, final_clock):
         with grpc.insecure_channel("transaction_verification:50052") as ch:
             stub = txn_grpc.TransactionVerificationStub(ch)
             results["transaction_verification"] = stub.ClearOrder(
-                txn.ClearRequest(order_id=order_id, final_clock=clock_json)
+                txn.ClearRequest(order_id=order_id,
+                                 final_clock=clock_json)
             )
 
     def clear_fraud():
         with grpc.insecure_channel("fraud_detection:50051") as ch:
             stub = fraud_grpc.FraudDetectionStub(ch)
             results["fraud_detection"] = stub.ClearOrder(
-                fraud.ClearRequest(order_id=order_id, final_clock=clock_json)
+                fraud.ClearRequest(order_id=order_id,
+                                   final_clock=clock_json)
             )
 
     def clear_suggestions():
         with grpc.insecure_channel("suggestions:50053") as ch:
             stub = sugg_grpc.SuggestionsStub(ch)
             results["suggestions"] = stub.ClearOrder(
-                sugg.ClearRequest(order_id=order_id, final_clock=clock_json)
+                sugg.ClearRequest(order_id=order_id,
+                                  final_clock=clock_json)
             )
 
     threads = [
@@ -81,7 +89,9 @@ def broadcast_clear_order(order_id, final_clock):
     for t in threads:
         t.join()
 
-    logger.info(f"[{order_id}] Broadcast clear results: { {svc: vars(resp) for svc, resp in results.items()} }")
+    logger.info(f"[{order_id}] Broadcast clear results: "
+                f"{ {svc: vars(resp) for svc, resp in results.items()} }")
+
 
 @app.route("/checkout", methods=["POST"])
 def checkout():
@@ -111,48 +121,79 @@ def checkout():
 
     # 3) Transaction Verification
     with grpc.insecure_channel("transaction_verification:50052") as ch:
-        stub = txn_grpc.TransactionVerificationStub(ch)
+        stub   = txn_grpc.TransactionVerificationStub(ch)
         verify = stub.ProcessOrder(txn.OrderProcessRequest(order_id=order_id))
     if not verify.is_valid:
         logger.info(f"[{order_id}] Transaction invalid → Order Rejected")
-        return jsonify({"orderId": order_id, "status": "Order Rejected", "suggestedBooks": []}), 200
+        return jsonify({
+            "orderId": order_id,
+            "status":   "Order Rejected",
+            "suggestedBooks": []
+        }), 200
 
     # 4) Fraud Detection
     with grpc.insecure_channel("fraud_detection:50051") as ch:
-        stub = fraud_grpc.FraudDetectionStub(ch)
-        fraud_res = stub.ProcessOrder(fraud.OrderProcessRequest(order_id=order_id))
+        stub      = fraud_grpc.FraudDetectionStub(ch)
+        fraud_res = stub.ProcessOrder(fraud.OrderProcessRequest(
+            order_id=order_id
+        ))
     if fraud_res.is_fraudulent:
         logger.info(f"[{order_id}] Fraud detected → Order Rejected")
-        return jsonify({"orderId": order_id, "status": "Order Rejected (Fraud)", "suggestedBooks": []}), 200
+        return jsonify({
+            "orderId": order_id,
+            "status":   "Order Rejected (Fraud)",
+            "suggestedBooks": []
+        }), 200
 
     # 5) Book Suggestions
     with grpc.insecure_channel("suggestions:50053") as ch:
-        stub = sugg_grpc.SuggestionsStub(ch)
+        stub  = sugg_grpc.SuggestionsStub(ch)
         suggs = stub.GetBookSuggestions(sugg.SuggestionsRequest(
             user_id=order_id, num_suggestions=5
         ))
     suggested = [{"title": b} for b in suggs.books]
     logger.info(f"[{order_id}] Order Approved! Suggested books: {suggested}")
 
-    # 6) Inventory validation against BooksDatabase
-    db_stub = books_grpc.BooksDatabaseStub(
-        grpc.insecure_channel("books_db1:50060")
-    )
+    # 6) Inventory reservation in orchestrator (read + write)---
+    db_ch   = grpc.insecure_channel("books_db1:50060")
+    db_stub = books_grpc.BooksDatabaseStub(db_ch)
+
     insufficient = []
     for item in data.get("items", []):
         title    = item.get("title") or item.get("name")
-        quantity = item.get("quantity", 0)
+        qty      = item.get("quantity", 0)
+        # read current stock
         read_res = db_stub.Read(books_pb2.ReadRequest(title=title))
-        if read_res.stock < quantity:
-            insufficient.append((title, read_res.stock, quantity))
+        current  = read_res.stock
+
+        if current < qty:
+            insufficient.append((title, current, qty))
+            continue
+
+        # reserve: write new stock
+        new_stock = current - qty
+        write_res = db_stub.Write(books_pb2.WriteRequest(
+            title=title, new_stock=new_stock
+        ))
+        if not write_res.success:
+            logger.error(f"[{order_id}] Failed to reserve stock for {title}")
+            return jsonify({
+                "orderId": order_id,
+                "status":   "Order Failed",
+                "message":  f"Could not reserve stock for {title}",
+                "suggestedBooks": []
+            }), 500
+
+        logger.info(f"[{order_id}] Reserved {qty}×'{title}': {current}→{new_stock}")
 
     if insufficient:
-        msg = "; ".join(f"{t}: have {have}, want {want}" for t, have, want in insufficient)
+        msg = "; ".join(f"{t}: have {have}, want {want}"
+                        for t, have, want in insufficient)
         logger.info(f"[{order_id}] Out of stock → Order Rejected ({msg})")
         return jsonify({
             "orderId": order_id,
-            "status": "Order Rejected (Out of Stock)",
-            "message": msg,
+            "status":   "Order Rejected (Out of Stock)",
+            "message":  msg,
             "suggestedBooks": []
         }), 200
 
@@ -166,7 +207,7 @@ def checkout():
     ]
     with grpc.insecure_channel("order_queue:50054") as ch:
         stub = queue_grpc.OrderQueueStub(ch)
-        ack = stub.Enqueue(queue_pb2.OrderRequest(
+        ack  = stub.Enqueue(queue_pb2.OrderRequest(
             order_id=order_id,
             is_premium=data.get("user", {}).get("premium", False),
             shipping_method=data.get("shippingMethod", "Standard"),
@@ -174,7 +215,12 @@ def checkout():
         ))
     if not ack.success:
         logger.error(f"[{order_id}] Failed to enqueue: {ack.message}")
-        return jsonify({"orderId": order_id, "status": "Failed to enqueue", "suggestedBooks": []}), 500
+        return jsonify({
+            "orderId": order_id,
+            "status":   "Failed to enqueue",
+            "suggestedBooks": []
+        }), 500
+
     logger.info(f"[{order_id}] Successfully enqueued to OrderQueue")
 
     # 8) Clear cache
@@ -182,9 +228,10 @@ def checkout():
 
     return jsonify({
         "orderId": order_id,
-        "status": "Order Approved",
+        "status":   "Order Approved",
         "suggestedBooks": suggested
     }), 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
