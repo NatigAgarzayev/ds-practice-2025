@@ -2,13 +2,16 @@ syntax = "proto3";
 package utils.pb.books_database;
 
 service BooksDatabase {
-  rpc Read       (ReadRequest)       returns (ReadResponse);
-  rpc Write      (WriteRequest)      returns (WriteResponse);
+  rpc Read           (ReadRequest)       returns (ReadResponse);
+  rpc Write          (WriteRequest)      returns (WriteResponse);
 
   // 2PC participant RPCs
-  rpc Prepare    (PrepareRequest)    returns (PrepareResponse);
-  rpc Commit     (CommitRequest)     returns (CommitResponse);
-  rpc Abort      (AbortRequest)      returns (AbortResponse);
+  rpc Prepare        (PrepareRequest)    returns (PrepareResponse);
+  rpc Commit         (CommitRequest)     returns (CommitResponse);
+  rpc Abort          (AbortRequest)      returns (AbortResponse);
+
+  // --- new atomic decrement RPC ---
+  rpc DecrementStock (DecrementRequest)  returns (DecrementResponse);
 }
 
 message ReadRequest {
@@ -39,7 +42,6 @@ message PrepareResponse {
 
 message CommitRequest {
   string order_id = 1;
-  string title    = 2;
 }
 message CommitResponse {
   bool success = 1;
@@ -50,4 +52,17 @@ message AbortRequest {
 }
 message AbortResponse {
   bool aborted = 1;
+}
+
+// -- DecrementStock messages --
+
+message DecrementRequest {
+  string title    = 1;
+  int32  amount   = 2;
+  string order_id = 3;
+}
+message DecrementResponse {
+  bool   success   = 1;
+  int32  new_stock = 2;
+  string error     = 3;
 }

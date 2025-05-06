@@ -59,6 +59,11 @@ class BooksDatabaseStub(object):
                 request_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.AbortRequest.SerializeToString,
                 response_deserializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.AbortResponse.FromString,
                 _registered_method=True)
+        self.DecrementStock = channel.unary_unary(
+                '/utils.pb.books_database.BooksDatabase/DecrementStock',
+                request_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.DecrementRequest.SerializeToString,
+                response_deserializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.DecrementResponse.FromString,
+                _registered_method=True)
 
 
 class BooksDatabaseServicer(object):
@@ -95,6 +100,13 @@ class BooksDatabaseServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def DecrementStock(self, request, context):
+        """--- new atomic decrement RPC ---
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_BooksDatabaseServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -122,6 +134,11 @@ def add_BooksDatabaseServicer_to_server(servicer, server):
                     servicer.Abort,
                     request_deserializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.AbortRequest.FromString,
                     response_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.AbortResponse.SerializeToString,
+            ),
+            'DecrementStock': grpc.unary_unary_rpc_method_handler(
+                    servicer.DecrementStock,
+                    request_deserializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.DecrementRequest.FromString,
+                    response_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.DecrementResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -259,6 +276,33 @@ class BooksDatabase(object):
             '/utils.pb.books_database.BooksDatabase/Abort',
             utils_dot_pb_dot_books__database_dot_books__database__pb2.AbortRequest.SerializeToString,
             utils_dot_pb_dot_books__database_dot_books__database__pb2.AbortResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DecrementStock(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/utils.pb.books_database.BooksDatabase/DecrementStock',
+            utils_dot_pb_dot_books__database_dot_books__database__pb2.DecrementRequest.SerializeToString,
+            utils_dot_pb_dot_books__database_dot_books__database__pb2.DecrementResponse.FromString,
             options,
             channel_credentials,
             insecure,
