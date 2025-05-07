@@ -10,6 +10,9 @@ We used proto schemas for estbalishing DB prototype.
 We have added 2 more services: executor and order_queue. We have implemented vectors clocks, queue, executors and leader elections.
 Now it prioritize premium users over non-premium users. 
 
+In checkpoint #3 we added the books_database and two protocols: Consistency Protocol (Primary–Backup + Vector Clocks) and Distributed Commitment Protocol (2-Phase Commit).
+
+
 ## Installation
 In order to launch launch your docker desktop, then move to the project directory:
 ```sh

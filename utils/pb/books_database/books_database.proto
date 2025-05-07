@@ -1,9 +1,11 @@
 syntax = "proto3";
 package utils.pb.books_database;
-
 service BooksDatabase {
   rpc Read           (ReadRequest)       returns (ReadResponse);
   rpc Write          (WriteRequest)      returns (WriteResponse);
+
+  // -- replication RPC for primary → backups --
+  rpc Replicate      (ReplicateRequest)  returns (ReplicateAck);
 
   // 2PC participant RPCs
   rpc Prepare        (PrepareRequest)    returns (PrepareResponse);
@@ -26,6 +28,17 @@ message WriteRequest {
   int32  new_stock = 2;
 }
 message WriteResponse {
+  bool success = 1;
+}
+
+// -- primary→backup replication messages --
+
+message ReplicateRequest {
+  string title     = 1;
+  int32  new_stock = 2;
+  string clock     = 3;
+}
+message ReplicateAck {
   bool success = 1;
 }
 

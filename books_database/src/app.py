@@ -51,8 +51,11 @@ class DatabaseParticipant(books_database_pb2_grpc.BooksDatabaseServicer):
                 with open(self.log_path, "r") as f:
                     for line in f:
                         rec = json.loads(line)
-                        self.temp_updates[rec["order_id"]] = (rec["title"], rec["new_stock"])
-                logger.info(f"[{self.db_id}] Recovered {len(self.temp_updates)} staged txns")
+                        self.temp_updates.setdefault(rec["order_id"], []).append(
+                            (rec["title"], rec["new_stock"])
+                        )
+                total = sum(len(v) for v in self.temp_updates.values())
+                logger.info(f"[{self.db_id}] Recovered {total} staged updates")
             except Exception as e:
                 logger.error(f"[{self.db_id}] Failed to recover staging log: {e}")
 
@@ -73,6 +76,7 @@ class DatabaseParticipant(books_database_pb2_grpc.BooksDatabaseServicer):
             f.writelines(lines)
 
     # ----- Standard RPCs -----
+
     def Read(self, request, context):
         with self.lock:
             stock = self.store.get(request.title, 0)
@@ -88,9 +92,10 @@ class DatabaseParticipant(books_database_pb2_grpc.BooksDatabaseServicer):
         clock_json = json.dumps(self.clock.to_dict())
         logger.info(f"[{self.db_id}] ✏️ Local Write {request.title}→{request.new_stock}, VC={self.clock}")
 
-        # replicate
+        # replicate to backups
         for peer in self.peers:
-            if peer == self.db_id: continue
+            if peer == self.db_id:
+                continue
             stub = books_database_pb2_grpc.BooksDatabaseStub(
                 grpc.insecure_channel(f"{peer}:50060")
             )
@@ -115,23 +120,29 @@ class DatabaseParticipant(books_database_pb2_grpc.BooksDatabaseServicer):
         return books_database_pb2.ReplicateAck(success=True)
 
     # ----- 2PC Participant RPCs -----
+
     def Prepare(self, request, context):
         with self.lock:
-            self.temp_updates[request.order_id] = (request.title, request.new_stock)
+            self.temp_updates.setdefault(request.order_id, []).append(
+                (request.title, request.new_stock)
+            )
             self._append_log(request.order_id, request.title, request.new_stock)
-        logger.info(f"[2PC Prepare] staged {request.title}→{request.new_stock} for {request.order_id}")
+        logger.info(f"[2PC Prepare] staged {request.title}→{request.new_stock} for order {request.order_id}")
         return books_database_pb2.PrepareResponse(ready=True)
 
     def Commit(self, request, context):
         with self.lock:
-            tup = self.temp_updates.pop(request.order_id, None)
-            if tup is None:
-                context.abort(StatusCode.FAILED_PRECONDITION, "No staged update")
-            title, new_stock = tup
-            self.clock.increment(self.db_id)
-            self.store[title] = new_stock
+            staged = self.temp_updates.pop(request.order_id, [])
+        if not staged:
+            context.abort(StatusCode.FAILED_PRECONDITION, "No staged update")
+
+        for title, new_stock in staged:
+            with self.lock:
+                self.clock.increment(self.db_id)
+                self.store[title] = new_stock
+            logger.info(f"[2PC Commit] applied {title}→{new_stock} for order {request.order_id}, VC={self.clock}")
             self._remove_log(request.order_id)
-        logger.info(f"[2PC Commit] applied {title}→{new_stock} for {request.order_id}, VC={self.clock}")
+
         return books_database_pb2.CommitResponse(success=True)
 
     def Abort(self, request, context):
@@ -139,10 +150,11 @@ class DatabaseParticipant(books_database_pb2_grpc.BooksDatabaseServicer):
             removed = self.temp_updates.pop(request.order_id, None)
             if removed:
                 self._remove_log(request.order_id)
-        logger.info(f"[2PC Abort] cleared staging for {request.order_id}")
+        logger.info(f"[2PC Abort] cleared staging for order {request.order_id}")
         return books_database_pb2.AbortResponse(aborted=True)
 
-    # Second bonus in Sesssion 10
+    # ----- New: Atomic DecrementStock RPC -----
+
     def DecrementStock(self, request, context):
         title  = request.title
         delta  = request.amount
@@ -156,7 +168,6 @@ class DatabaseParticipant(books_database_pb2_grpc.BooksDatabaseServicer):
                     error=f"insufficient stock ({current} < {delta})"
                 )
 
-            # perform update
             new_stock = current - delta
             self.clock.increment(self.db_id)
             self.store[title] = new_stock

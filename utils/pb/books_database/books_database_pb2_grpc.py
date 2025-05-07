@@ -44,6 +44,11 @@ class BooksDatabaseStub(object):
                 request_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.WriteRequest.SerializeToString,
                 response_deserializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.WriteResponse.FromString,
                 _registered_method=True)
+        self.Replicate = channel.unary_unary(
+                '/utils.pb.books_database.BooksDatabase/Replicate',
+                request_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.ReplicateRequest.SerializeToString,
+                response_deserializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.ReplicateAck.FromString,
+                _registered_method=True)
         self.Prepare = channel.unary_unary(
                 '/utils.pb.books_database.BooksDatabase/Prepare',
                 request_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.PrepareRequest.SerializeToString,
@@ -77,6 +82,13 @@ class BooksDatabaseServicer(object):
 
     def Write(self, request, context):
         """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Replicate(self, request, context):
+        """-- replication RPC for primary → backups --
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -119,6 +131,11 @@ def add_BooksDatabaseServicer_to_server(servicer, server):
                     servicer.Write,
                     request_deserializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.WriteRequest.FromString,
                     response_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.WriteResponse.SerializeToString,
+            ),
+            'Replicate': grpc.unary_unary_rpc_method_handler(
+                    servicer.Replicate,
+                    request_deserializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.ReplicateRequest.FromString,
+                    response_serializer=utils_dot_pb_dot_books__database_dot_books__database__pb2.ReplicateAck.SerializeToString,
             ),
             'Prepare': grpc.unary_unary_rpc_method_handler(
                     servicer.Prepare,
@@ -195,6 +212,33 @@ class BooksDatabase(object):
             '/utils.pb.books_database.BooksDatabase/Write',
             utils_dot_pb_dot_books__database_dot_books__database__pb2.WriteRequest.SerializeToString,
             utils_dot_pb_dot_books__database_dot_books__database__pb2.WriteResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Replicate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/utils.pb.books_database.BooksDatabase/Replicate',
+            utils_dot_pb_dot_books__database_dot_books__database__pb2.ReplicateRequest.SerializeToString,
+            utils_dot_pb_dot_books__database_dot_books__database__pb2.ReplicateAck.FromString,
             options,
             channel_credentials,
             insecure,
